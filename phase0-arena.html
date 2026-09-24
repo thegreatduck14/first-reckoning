@@ -1,0 +1,623 @@
+<title>The Reckoning Table</title>
+<meta name="description" content="Phase 0 combat prototype for Adamito's Game — pick two units from the shared roster and fight them to see if the formula holds up.">
+<style>
+  :root {
+    --bg: #17130d;
+    --bg-2: #1e1810;
+    --panel: #241d13;
+    --panel-2: #2b2217;
+    --edge: #4a3c25;
+    --edge-soft: #362b1a;
+    --ink: #ecdfc2;
+    --ink-dim: #a9997a;
+    --ink-faint: #7c6f57;
+    --brass: #d69a3f;
+    --brass-dim: #9a6f2c;
+    --sage: #7fa06e;
+    --rust: #bd5a41;
+    --rust-dim: #8a4230;
+    --shadow: rgba(0,0,0,0.45);
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4ecd8;
+    --bg-2: #ece0c4;
+    --panel: #fbf5e6;
+    --panel-2: #f2e8d0;
+    --edge: #cdb888;
+    --edge-soft: #ddc9a0;
+    --ink: #2c2114;
+    --ink-dim: #5b4c34;
+    --ink-faint: #8a7a58;
+    --brass: #93601c;
+    --brass-dim: #6f4813;
+    --sage: #4d6b3e;
+    --rust: #9c4128;
+    --rust-dim: #7a3220;
+    --shadow: rgba(60,45,20,0.15);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f4ecd8;
+      --bg-2: #ece0c4;
+      --panel: #fbf5e6;
+      --panel-2: #f2e8d0;
+      --edge: #cdb888;
+      --edge-soft: #ddc9a0;
+      --ink: #2c2114;
+      --ink-dim: #5b4c34;
+      --ink-faint: #8a7a58;
+      --brass: #93601c;
+      --brass-dim: #6f4813;
+      --sage: #4d6b3e;
+      --rust: #9c4128;
+      --rust-dim: #7a3220;
+      --shadow: rgba(60,45,20,0.15);
+      color-scheme: light;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Spectral', Georgia, 'Times New Roman', serif;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 28px;
+    min-height: 100%;
+  }
+  html, body { height: 100%; }
+
+  .wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+
+  header { display: flex; flex-direction: column; gap: 6px; }
+  .eyebrow {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brass);
+  }
+  h1 {
+    font-family: 'Oswald', 'Arial Narrow', sans-serif;
+    font-weight: 600;
+    font-size: clamp(28px, 5vw, 38px);
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .sub {
+    color: var(--ink-dim);
+    font-size: 15px;
+    max-width: 62ch;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .arena {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 640px) {
+    .arena { grid-template-columns: 1fr; }
+    .vs-col { order: 2; }
+    .side.enemy { order: 3; }
+  }
+
+  .side {
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    box-shadow: 0 2px 10px var(--shadow);
+    position: relative;
+  }
+  .side::before {
+    content: attr(data-role);
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--bg);
+    padding: 0 8px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .side.player { border-left: 3px solid var(--sage); }
+  .side.enemy { border-left: 3px solid var(--rust); }
+
+  select {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--edge);
+    color: var(--ink);
+    font-family: 'Spectral', serif;
+    font-size: 15px;
+    padding: 9px 10px;
+    border-radius: 2px;
+    appearance: none;
+    cursor: pointer;
+  }
+  select:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+
+  .unit-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin: 0;
+  }
+  .unit-cat {
+    font-family: 'Oswald', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--brass-dim);
+    border: 1px solid var(--edge);
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 2px;
+    width: fit-content;
+  }
+  .unit-note {
+    font-size: 13px;
+    color: var(--ink-faint);
+    line-height: 1.5;
+    min-height: 1.2em;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px 14px;
+  }
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--edge-soft);
+    padding-block: 3px;
+    font-size: 14px;
+  }
+  .stat .k { color: var(--ink-faint); font-size: 12px; letter-spacing: 0.03em; }
+  .stat .v { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  .hp-block { display: flex; flex-direction: column; gap: 5px; }
+  .hp-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-dim); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .hp-track {
+    height: 9px;
+    background: var(--panel-2);
+    border: 1px solid var(--edge);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .hp-fill {
+    height: 100%;
+    background: var(--sage);
+    transition: width 0.35s ease;
+  }
+  .side.enemy .hp-fill { background: var(--rust); }
+  .hp-fill.low { background: var(--rust); }
+  .side.enemy .hp-fill.low { background: #7a2c1c; }
+
+  .vs-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding-top: 34px;
+    min-width: 150px;
+  }
+  .vs-mark {
+    font-family: 'Oswald', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+  }
+  .odds {
+    background: var(--panel);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    width: 100%;
+    font-size: 13px;
+  }
+  .odds-row { display: flex; justify-content: space-between; gap: 10px; }
+  .odds-row .k { color: var(--ink-dim); }
+  .odds-row .v { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .odds-row .v.dealt { color: var(--sage); }
+  .odds-row .v.taken { color: var(--rust); }
+
+  button.attack {
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--brass);
+    color: var(--bg);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 2px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: 600;
+  }
+  button.attack:hover:not(:disabled) { filter: brightness(1.08); }
+  button.attack:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.attack:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  button.reset {
+    font-family: 'Oswald', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--ink-dim);
+    border: 1px solid var(--edge);
+    padding: 8px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    width: 100%;
+  }
+  button.reset:hover { color: var(--ink); border-color: var(--ink-dim); }
+  button.reset:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+  .result-banner {
+    text-align: center;
+    font-family: 'Oswald', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    min-height: 1.4em;
+    color: var(--brass);
+  }
+
+  .log-panel {
+    background: var(--bg-2);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    padding: 4px 0;
+  }
+  .log-head {
+    font-family: 'Oswald', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 10px 16px 6px;
+    border-bottom: 1px solid var(--edge-soft);
+  }
+  .log-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+    max-height: 230px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12.5px;
+  }
+  .log-list li {
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--edge-soft);
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+  .log-list li:last-child { border-bottom: none; }
+  .log-list li .rnd { color: var(--brass-dim); margin-right: 6px; }
+  .log-list li.destroyed { color: var(--rust); }
+  .log-list .empty { color: var(--ink-faint); font-style: italic; }
+
+  footer.note {
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    line-height: 1.5;
+    border-top: 1px solid var(--edge-soft);
+    padding-top: 14px;
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Spectral:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Adamito's Game &middot; Phase 0 Prototype</div>
+    <h1>The Reckoning Table</h1>
+    <p class="sub">No map, no economy yet — just the shared unit roster and the combat formula, out in the open. Pick a unit for each side and force the fight, round by round, to see whether the numbers hold up.</p>
+  </header>
+
+  <div class="arena">
+    <div class="side player" data-role="Your Unit">
+      <select id="playerSelect" aria-label="Your unit"></select>
+      <p class="unit-cat" id="playerCat">&mdash;</p>
+      <p class="unit-note" id="playerNote"></p>
+      <div class="stat-grid" id="playerStats"></div>
+      <div class="hp-block">
+        <div class="hp-label"><span>Hull / Health</span><span id="playerHpText">0 / 0</span></div>
+        <div class="hp-track"><div class="hp-fill" id="playerHpFill"></div></div>
+      </div>
+    </div>
+
+    <div class="vs-col">
+      <div class="vs-mark">VERSUS</div>
+      <div class="odds">
+        <div class="odds-row"><span class="k">You deal</span><span class="v dealt" id="oddsDealt">&ndash;</span></div>
+        <div class="odds-row"><span class="k">You take</span><span class="v taken" id="oddsTaken">&ndash;</span></div>
+      </div>
+      <button class="attack" id="attackBtn">Attack</button>
+      <button class="reset" id="resetBtn">New Matchup</button>
+      <div class="result-banner" id="resultBanner"></div>
+    </div>
+
+    <div class="side enemy" data-role="Enemy Unit">
+      <select id="enemySelect" aria-label="Enemy unit"></select>
+      <p class="unit-cat" id="enemyCat">&mdash;</p>
+      <p class="unit-note" id="enemyNote"></p>
+      <div class="stat-grid" id="enemyStats"></div>
+      <div class="hp-block">
+        <div class="hp-label"><span>Hull / Health</span><span id="enemyHpText">0 / 0</span></div>
+        <div class="hp-track"><div class="hp-fill" id="enemyHpFill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-panel">
+    <div class="log-head">Battle Log</div>
+    <ul class="log-list" id="logList"><li class="empty">No rounds fought yet. Pick two units and attack.</li></ul>
+  </div>
+
+  <footer class="note">
+    Stats mirror the current tuning in <code>units.ts</code> / <code>combat.ts</code>: attack, defense, and any armor-penetration or category bonus decide damage — floored at 1, no hidden dice. "Tools" cost is tracked but not yet spendable; there's no economy system in Phase 0 to draw it from.
+  </footer>
+</div>
+
+<script>
+(function () {
+  // Mirrors src/units.ts — keep in sync by hand until Phase 1 shares one source.
+  var UNIT_TYPES = {
+    harvester: { id: "harvester", name: "Harvester", category: "economy", attack: 0, defense: 1, hp: 8, movement: 2, cost: 4, attackBonusVs: {}, notes: "Gathers the strategic resource. Unarmed — a raid target, not a fighter." },
+    lightInfantry: { id: "lightInfantry", name: "Light Infantry", category: "infantry", attack: 3, defense: 2, hp: 6, movement: 1, cost: 2, attackBonusVs: {} },
+    antiArmorInfantry: { id: "antiArmorInfantry", name: "Anti-Armor Infantry", category: "infantry", attack: 3, defense: 4, hp: 9, movement: 1, cost: 3, attackBonusVs: {}, armorPenetrationVs: { vehicle: 3 }, notes: "Ignores up to 3 points of vehicle defense — the counter vs. vehicles." },
+    scout: { id: "scout", name: "Scout", category: "vehicle", attack: 0, defense: 1, hp: 4, movement: 4, cost: 2, attackBonusVs: {}, notes: "No combat power. Reveals the map." },
+    lightVehicle: { id: "lightVehicle", name: "Light Vehicle", category: "vehicle", attack: 5, defense: 2, hp: 8, movement: 3, cost: 4, attackBonusVs: { infantry: 1.5 }, notes: "Fast attacker, strong vs. infantry in the open." },
+    heavyVehicle: { id: "heavyVehicle", name: "Heavy Vehicle", category: "vehicle", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, attackBonusVs: { infantry: 1.25 } },
+    artillery: { id: "artillery", name: "Artillery", category: "siege", attack: 10, defense: 1, hp: 6, movement: 1, cost: 7, attackBonusVs: {}, notes: "Long range, strong vs. bases, weak in melee." },
+    brave: { id: "brave", name: "Brave", category: "infantry", attack: 1, defense: 1, hp: 4, movement: 1, cost: 1, attackBonusVs: {}, notes: "Base native unit, unarmed with modern weapons." },
+    rocketTubeBrave: { id: "rocketTubeBrave", name: "Rocket Tube Brave", category: "infantry", attack: 4, defense: 4, hp: 6, movement: 1, cost: 3, attackBonusVs: {}, notes: "Brave armed with a rocket tube." },
+    mountedRocketTubeBrave: { id: "mountedRocketTubeBrave", name: "Mounted Rocket Tube Brave", category: "infantry", attack: 6, defense: 4, hp: 7, movement: 3, cost: 5, attackBonusVs: {}, notes: "Rocket Tube Brave on horseback — faster, same firepower." },
+    tankBrave: { id: "tankBrave", name: "Indian in Tank", category: "vehicle", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, toolsCost: 100, attackBonusVs: {}, notes: "Native unit crewing a captured tank. Same weight class as the colonial Heavy Vehicle." },
+    flyer: { id: "flyer", name: "Ornithopter", category: "air", attack: 6, defense: 2, hp: 7, movement: 5, cost: 9, attackBonusVs: {}, notes: "Ignores ground terrain. Vulnerable to dedicated anti-air only (not modeled yet)." }
+  };
+  var UNIT_ORDER = ["harvester","lightInfantry","antiArmorInfantry","scout","lightVehicle","heavyVehicle","artillery","flyer","brave","rocketTubeBrave","mountedRocketTubeBrave","tankBrave"];
+
+  // Mirrors src/combat.ts
+  function attackMultiplier(attacker, defenderCategory) {
+    return (attacker.attackBonusVs && attacker.attackBonusVs[defenderCategory]) || 1;
+  }
+  function armorPenetration(attacker, defenderCategory) {
+    return (attacker.armorPenetrationVs && attacker.armorPenetrationVs[defenderCategory]) || 0;
+  }
+  function computeDamage(attacker, defender) {
+    var mult = attackMultiplier(attacker, defender.category);
+    var pen = armorPenetration(attacker, defender.category);
+    var effDef = Math.max(0, defender.defense - pen);
+    var raw = attacker.attack * mult - effDef;
+    return Math.max(1, Math.round(raw));
+  }
+
+  var state = {
+    playerId: "antiArmorInfantry",
+    enemyId: "heavyVehicle",
+    playerHp: 0,
+    enemyHp: 0,
+    round: 0,
+    over: false
+  };
+
+  var el = {
+    playerSelect: document.getElementById("playerSelect"),
+    enemySelect: document.getElementById("enemySelect"),
+    playerCat: document.getElementById("playerCat"),
+    enemyCat: document.getElementById("enemyCat"),
+    playerNote: document.getElementById("playerNote"),
+    enemyNote: document.getElementById("enemyNote"),
+    playerStats: document.getElementById("playerStats"),
+    enemyStats: document.getElementById("enemyStats"),
+    playerHpText: document.getElementById("playerHpText"),
+    enemyHpText: document.getElementById("enemyHpText"),
+    playerHpFill: document.getElementById("playerHpFill"),
+    enemyHpFill: document.getElementById("enemyHpFill"),
+    oddsDealt: document.getElementById("oddsDealt"),
+    oddsTaken: document.getElementById("oddsTaken"),
+    attackBtn: document.getElementById("attackBtn"),
+    resetBtn: document.getElementById("resetBtn"),
+    resultBanner: document.getElementById("resultBanner"),
+    logList: document.getElementById("logList")
+  };
+
+  function populateSelect(sel, selectedId) {
+    sel.innerHTML = "";
+    UNIT_ORDER.forEach(function (id) {
+      var opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = UNIT_TYPES[id].name;
+      if (id === selectedId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  function statLine(label, value) {
+    return '<div class="stat"><span class="k">' + label + '</span><span class="v">' + value + '</span></div>';
+  }
+
+  function renderStats(type, statsEl, catEl, noteEl) {
+    catEl.textContent = type.category;
+    noteEl.textContent = type.notes || "";
+    var html = "";
+    html += statLine("Attack", type.attack);
+    html += statLine("Defense", type.defense);
+    html += statLine("Movement", type.movement);
+    html += statLine("Cost", type.cost + " pts" + (type.toolsCost ? " + " + type.toolsCost + " tools" : ""));
+    statsEl.innerHTML = html;
+  }
+
+  function hpFraction(hp, max) {
+    return max > 0 ? Math.max(0, hp) / max : 0;
+  }
+
+  function renderHp() {
+    var pType = UNIT_TYPES[state.playerId];
+    var eType = UNIT_TYPES[state.enemyId];
+
+    el.playerHpText.textContent = Math.max(0, state.playerHp) + " / " + pType.hp;
+    el.enemyHpText.textContent = Math.max(0, state.enemyHp) + " / " + eType.hp;
+
+    var pFrac = hpFraction(state.playerHp, pType.hp);
+    var eFrac = hpFraction(state.enemyHp, eType.hp);
+    el.playerHpFill.style.width = (pFrac * 100) + "%";
+    el.enemyHpFill.style.width = (eFrac * 100) + "%";
+    el.playerHpFill.classList.toggle("low", pFrac <= 0.3);
+    el.enemyHpFill.classList.toggle("low", eFrac <= 0.3);
+  }
+
+  function renderOdds() {
+    var attacker = UNIT_TYPES[state.playerId];
+    var defender = UNIT_TYPES[state.enemyId];
+    var dealt = computeDamage(attacker, defender);
+    var taken = defender.attack > 0 ? computeDamage(defender, attacker) : 0;
+    el.oddsDealt.textContent = dealt;
+    el.oddsTaken.textContent = taken;
+  }
+
+  function logLine(text, destroyed) {
+    var empty = el.logList.querySelector(".empty");
+    if (empty) empty.remove();
+    var li = document.createElement("li");
+    if (destroyed) li.className = "destroyed";
+    li.innerHTML = text;
+    el.logList.insertBefore(li, el.logList.firstChild);
+  }
+
+  function renderAll() {
+    var pType = UNIT_TYPES[state.playerId];
+    var eType = UNIT_TYPES[state.enemyId];
+    renderStats(pType, el.playerStats, el.playerCat, el.playerNote);
+    renderStats(eType, el.enemyStats, el.enemyCat, el.enemyNote);
+    renderHp();
+    renderOdds();
+    el.attackBtn.disabled = state.over;
+  }
+
+  function newMatchup(keepSelection) {
+    if (!keepSelection) {
+      state.playerId = el.playerSelect.value;
+      state.enemyId = el.enemySelect.value;
+    }
+    var pType = UNIT_TYPES[state.playerId];
+    var eType = UNIT_TYPES[state.enemyId];
+    state.playerHp = pType.hp;
+    state.enemyHp = eType.hp;
+    state.round = 0;
+    state.over = false;
+    el.resultBanner.textContent = "";
+    el.logList.innerHTML = '<li class="empty">No rounds fought yet. Pick two units and attack.</li>';
+    renderAll();
+  }
+
+  function doAttack() {
+    if (state.over) return;
+    var attacker = UNIT_TYPES[state.playerId];
+    var defender = UNIT_TYPES[state.enemyId];
+    state.round += 1;
+
+    var dmgToDefender = computeDamage(attacker, defender);
+    state.enemyHp = Math.max(0, state.enemyHp - dmgToDefender);
+    var defenderDestroyed = state.enemyHp === 0;
+
+    logLine('<span class="rnd">Rd ' + state.round + '</span>' + attacker.name + ' hits ' + defender.name + ' for ' + dmgToDefender + ' (' + Math.max(0, state.enemyHp) + '/' + defender.hp + ' left)');
+
+    if (defenderDestroyed) {
+      logLine('<span class="rnd">Rd ' + state.round + '</span>' + defender.name + ' is destroyed.', true);
+      state.over = true;
+      el.resultBanner.textContent = attacker.name + " wins the reckoning.";
+      renderAll();
+      return;
+    }
+
+    if (defender.attack > 0) {
+      var dmgToAttacker = computeDamage(defender, attacker);
+      state.playerHp = Math.max(0, state.playerHp - dmgToAttacker);
+      var attackerDestroyed = state.playerHp === 0;
+      logLine('<span class="rnd">Rd ' + state.round + '</span>' + defender.name + ' returns ' + dmgToAttacker + ' (' + Math.max(0, state.playerHp) + '/' + attacker.hp + ' left)');
+      if (attackerDestroyed) {
+        logLine('<span class="rnd">Rd ' + state.round + '</span>' + attacker.name + ' is destroyed.', true);
+        state.over = true;
+        el.resultBanner.textContent = defender.name + " wins the reckoning.";
+      }
+    }
+
+    renderAll();
+  }
+
+  el.playerSelect.addEventListener("change", function () { newMatchup(); });
+  el.enemySelect.addEventListener("change", function () { newMatchup(); });
+  el.attackBtn.addEventListener("click", doAttack);
+  el.resetBtn.addEventListener("click", function () { newMatchup(true); });
+
+  function boot(data) {
+    data = data || {};
+    state.playerId = data.playerId || state.playerId;
+    state.enemyId = data.enemyId || state.enemyId;
+    populateSelect(el.playerSelect, state.playerId);
+    populateSelect(el.enemySelect, state.enemyId);
+
+    if (typeof data.playerHp === "number" && typeof data.enemyHp === "number") {
+      state.playerHp = data.playerHp;
+      state.enemyHp = data.enemyHp;
+      state.round = data.round || 0;
+      state.over = !!data.over;
+      if (data.logHtml) el.logList.innerHTML = data.logHtml;
+      renderAll();
+    } else {
+      newMatchup(true);
+    }
+
+    try {
+      if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
+        window.claude.hot.snapshot(function () {
+          return {
+            playerId: state.playerId,
+            enemyId: state.enemyId,
+            playerHp: state.playerHp,
+            enemyHp: state.enemyHp,
+            round: state.round,
+            over: state.over,
+            logHtml: el.logList.innerHTML
+          };
+        });
+      }
+    } catch (e) {}
+  }
+
+  try {
+    if (window.claude && window.claude.hot && window.claude.hot.ready) {
+      window.claude.hot.ready(boot);
+    } else {
+      boot(window.claude && window.claude.hot ? window.claude.hot.data : null);
+    }
+  } catch (e) {
+    boot(null);
+  }
+})();
+</script>

@@ -1,0 +1,2723 @@
+<title>First Reckoning</title>
+<meta name="description" content="Phase 1 vertical slice for Adamito's Game — a single-map turn-based skirmish: build, research, harvest, and fight with the shared unit roster.">
+<style>
+  :root {
+    --bg: #17130d;
+    --bg-2: #1e1810;
+    --panel: #241d13;
+    --panel-2: #2b2217;
+    --edge: #4a3c25;
+    --edge-soft: #362b1a;
+    --ink: #ecdfc2;
+    --ink-dim: #a9997a;
+    --ink-faint: #7c6f57;
+    --brass: #d69a3f;
+    --brass-dim: #9a6f2c;
+    --sage: #7fa06e;
+    --rust: #bd5a41;
+    --rust-dim: #8a4230;
+    --board: #4fa3a8;
+    --tile: #2c2417;
+    --tile-resource: #4a3d1e;
+    --tile-forest: #33422a;
+    --tile-mountain: #4f4437;
+    --tile-water: #253d4d;
+    --shadow: rgba(0,0,0,0.45);
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4ecd8;
+    --bg-2: #ece0c4;
+    --panel: #fbf5e6;
+    --panel-2: #f2e8d0;
+    --edge: #cdb888;
+    --edge-soft: #ddc9a0;
+    --ink: #2c2114;
+    --ink-dim: #5b4c34;
+    --ink-faint: #8a7a58;
+    --brass: #93601c;
+    --brass-dim: #6f4813;
+    --sage: #4d6b3e;
+    --rust: #9c4128;
+    --rust-dim: #7a3220;
+    --board: #2f7d82;
+    --tile: #e3d5ae;
+    --tile-resource: #d4b96a;
+    --tile-forest: #9cb37c;
+    --tile-mountain: #b6a889;
+    --tile-water: #8fb9cc;
+    --shadow: rgba(60,45,20,0.15);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f4ecd8; --bg-2: #ece0c4; --panel: #fbf5e6; --panel-2: #f2e8d0;
+      --edge: #cdb888; --edge-soft: #ddc9a0; --ink: #2c2114; --ink-dim: #5b4c34;
+      --ink-faint: #8a7a58; --brass: #93601c; --brass-dim: #6f4813; --sage: #4d6b3e;
+      --rust: #9c4128; --rust-dim: #7a3220; --board: #2f7d82; --tile: #e3d5ae; --tile-resource: #d4b96a;
+      --tile-forest: #9cb37c; --tile-mountain: #b6a889; --tile-water: #8fb9cc;
+      --shadow: rgba(60,45,20,0.15); color-scheme: light;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Spectral', Georgia, serif;
+    margin: 0;
+    padding-inline: 16px;
+    padding-block: 22px;
+    min-height: 100%;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+  .titleblock { display: flex; flex-direction: column; gap: 4px; }
+  .eyebrow { font-family: 'Oswald', sans-serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass); }
+  h1 { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: clamp(24px, 4vw, 32px); margin: 0; text-wrap: balance; }
+  .sub { color: var(--ink-dim); font-size: 13.5px; max-width: 58ch; line-height: 1.5; margin: 4px 0 0; }
+
+  .hud {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .hud-stat {
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 3px;
+    padding: 7px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 84px;
+  }
+  .hud-stat .k { font-family: 'Oswald', sans-serif; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+  .hud-stat .v { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .hud-stat.player { border-left: 3px solid var(--sage); }
+  .hud-stat.ai { border-left: 3px solid var(--rust); }
+
+  .layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
+  @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } }
+
+  .board-panel {
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 3px;
+    padding: 14px; box-shadow: 0 2px 10px var(--shadow);
+  }
+  .board-scroll {
+    overflow: auto; max-height: 560px; border: 1px solid var(--edge-soft); border-radius: 2px;
+  }
+  .board-hint { font-size: 11px; color: var(--ink-faint); margin: 8px 0 0; }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 28), var(--tile-px, 34px));
+    grid-template-rows: repeat(var(--rows, 18), var(--tile-px, 34px));
+    gap: 3px;
+    width: max-content;
+  }
+  .tile {
+    background-color: var(--tile);
+    background-image:
+      repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 4px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 4px);
+    border: 1px solid var(--edge-soft);
+    border-radius: 2px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    cursor: default;
+    min-width: 0; min-height: 0;
+  }
+  .tile.resource {
+    background-color: var(--tile-resource);
+    background-image:
+      repeating-linear-gradient(45deg, rgba(0,0,0,0.07) 0 2px, transparent 2px 4px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 4px);
+  }
+  .tile.forest {
+    background-color: var(--tile-forest);
+    background-image:
+      repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0 2px, transparent 2px 4px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 4px);
+  }
+  .tile.mountain {
+    background-color: var(--tile-mountain);
+    background-image:
+      repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0 2px, transparent 2px 4px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 4px);
+  }
+  .tile.water {
+    background-color: var(--tile-water);
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 3px, transparent 3px 9px);
+  }
+  .tile.unexplored {
+    background-color: #050505;
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 5px);
+    border-color: #000;
+  }
+  .tile.reachable { outline: 2px solid var(--sage); outline-offset: -2px; cursor: pointer; }
+  .tile.attackable { outline: 2px solid var(--rust); outline-offset: -2px; cursor: pointer; }
+  .tile.boardable { outline: 2px solid var(--board); outline-offset: -2px; cursor: pointer; }
+  .tile.selected { outline: 2px solid var(--brass); outline-offset: -2px; }
+
+  .goods-icon {
+    position: absolute; width: 42%; height: 42%; top: 8%; left: 8%;
+    fill: var(--brass);
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,0.35));
+    pointer-events: none;
+  }
+  .terrain-icon {
+    position: absolute; width: 52%; height: 52%; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    fill: rgba(0,0,0,0.4);
+    filter: drop-shadow(0 1px 0 rgba(255,255,255,0.12));
+    pointer-events: none;
+  }
+
+  .token {
+    width: 78%; height: 78%; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--bg);
+    user-select: none;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .token.player { background: var(--sage); }
+  .token.ai { background: var(--rust); }
+  .token.natives { background: var(--brass); }
+  .token.acted { opacity: 0.45; }
+  .token svg { width: 68%; height: 68%; fill: rgba(0,0,0,0.72); }
+  .base-token {
+    width: 84%; height: 84%; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .base-token.player { background: var(--sage); }
+  .base-token.natives { background: var(--brass); }
+  .base-token.ai { background: var(--rust); }
+  .base-token svg { width: 74%; height: 74%; fill: rgba(0,0,0,0.72); }
+  .hp-pip {
+    position: absolute; bottom: 2px; left: 2px; right: 2px;
+    height: 3px; background: var(--edge-soft); border-radius: 2px; overflow: hidden;
+  }
+  .hp-pip-fill { height: 100%; background: var(--brass); }
+  .cargo-badge {
+    position: absolute; top: 2px; right: 2px;
+    min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
+    background: var(--board); color: var(--bg);
+    font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+    pointer-events: none;
+  }
+
+  .side-col { display: flex; flex-direction: column; gap: 14px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 3px;
+    padding: 14px; display: flex; flex-direction: column; gap: 10px;
+    box-shadow: 0 2px 10px var(--shadow);
+  }
+  .panel h2 {
+    font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0;
+    border-bottom: 1px solid var(--edge-soft); padding-bottom: 8px;
+  }
+  .sel-name { font-family: 'Oswald', sans-serif; font-size: 17px; font-weight: 600; margin: 0; }
+  .sel-empty { color: var(--ink-faint); font-size: 13px; font-style: italic; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px solid var(--edge-soft); padding-block: 3px; }
+  .stat-row .k { color: var(--ink-faint); }
+  .stat-row .v { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .hint { font-size: 12px; color: var(--ink-faint); line-height: 1.5; }
+  .cargo-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .cargo-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; padding: 4px 6px; background: var(--panel-2);
+    border: 1px solid var(--edge-soft); border-radius: 3px;
+  }
+  .disembark-btn {
+    font-family: 'Oswald', sans-serif; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    background: var(--board); color: var(--bg); border: none; border-radius: 2px;
+    padding: 3px 6px; cursor: pointer;
+  }
+  .disembark-btn:hover { filter: brightness(1.1); }
+
+  select, button.wide {
+    width: 100%; font-family: 'Spectral', serif; font-size: 14px;
+    background: var(--panel-2); border: 1px solid var(--edge); color: var(--ink);
+    padding: 8px 10px; border-radius: 2px; cursor: pointer;
+  }
+  button.end-turn {
+    font-family: 'Oswald', sans-serif; font-size: 14px; letter-spacing: 0.08em;
+    text-transform: uppercase; background: var(--brass); color: var(--bg); border: none;
+    padding: 12px 18px; border-radius: 2px; cursor: pointer; width: 100%; font-weight: 600;
+  }
+  button.end-turn:hover:not(:disabled) { filter: brightness(1.08); }
+  button.end-turn:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:focus-visible, select:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+
+  .tech-item { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+  .tech-item .name { display: flex; justify-content: space-between; }
+  .tech-bar { height: 6px; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 2px; overflow: hidden; }
+  .tech-bar-fill { height: 100%; background: var(--brass); }
+  .tech-item.done .name { color: var(--sage); }
+
+  .log-list { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow-y: auto; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; }
+  .log-list li { padding: 5px 0; border-bottom: 1px solid var(--edge-soft); color: var(--ink-dim); line-height: 1.45; }
+  .log-list li:last-child { border-bottom: none; }
+  .log-list li.win { color: var(--brass); }
+  .log-list .empty { color: var(--ink-faint); font-style: italic; }
+
+  .result-overlay {
+    position: fixed; inset: 0; background: rgba(10,8,5,0.82);
+    display: flex; align-items: center; justify-content: center; z-index: 10;
+  }
+  .result-overlay[hidden] { display: none; }
+  .result-card {
+    background: var(--panel); border: 1px solid var(--brass); border-radius: 4px;
+    padding: 34px 44px; text-align: center; max-width: 90vw;
+  }
+  .result-card h2 { font-family: 'Oswald', sans-serif; font-size: 26px; color: var(--brass); margin: 0 0 8px; }
+  .result-card p { color: var(--ink-dim); font-size: 14px; margin: 0 0 18px; }
+
+  .combat-card {
+    background: var(--panel); border: 1px solid var(--brass); border-radius: 4px;
+    padding: 22px 26px; max-width: 420px; width: 92vw;
+  }
+  .combat-card h2 {
+    font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brass); margin: 0 0 16px; text-align: center;
+  }
+  .combat-compare { display: flex; align-items: center; gap: 12px; }
+  .combat-side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
+  .combat-side .badge {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+  }
+  .combat-side .badge svg { width: 68%; height: 68%; fill: rgba(0,0,0,0.72); }
+  .combat-side.player .badge { background: var(--sage); }
+  .combat-side.enemy .badge { background: var(--rust); }
+  .combat-side .name { font-family: 'Oswald', sans-serif; font-size: 12.5px; font-weight: 600; }
+  .combat-side .terrain-note { font-size: 11px; color: var(--brass); min-height: 1.3em; }
+  .combat-side .mini-stats { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11.5px; color: var(--ink-dim); }
+  .combat-vs-mark { font-family: 'Oswald', sans-serif; font-size: 11px; color: var(--ink-faint); }
+
+  .combat-result {
+    display: flex; justify-content: space-around; margin: 18px 0; padding: 12px 0;
+    border-top: 1px solid var(--edge-soft); border-bottom: 1px solid var(--edge-soft);
+  }
+  .combat-result .col { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .combat-result .lbl { font-family: 'Oswald', sans-serif; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+  .combat-result .num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .combat-result .num.dealt { color: var(--sage); }
+  .combat-result .num.taken { color: var(--rust); }
+
+  .combat-actions { display: flex; gap: 10px; }
+  .combat-actions button { flex: 1; }
+  button.cancel {
+    background: transparent; border: 1px solid var(--edge); color: var(--ink-dim);
+    font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.06em; font-size: 13px;
+    padding: 11px; border-radius: 2px; cursor: pointer;
+  }
+  button.cancel:hover { color: var(--ink); border-color: var(--ink-dim); }
+
+  .city-card {
+    background: var(--panel); border: 1px solid var(--brass); border-radius: 4px;
+    padding: 22px 26px; max-width: 440px; width: 92vw; max-height: 86vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .city-card h2 {
+    font-family: 'Oswald', sans-serif; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--brass); margin: 0;
+  }
+  .city-section { display: flex; flex-direction: column; gap: 6px; }
+  .city-section h3 {
+    font-family: 'Oswald', sans-serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0; border-bottom: 1px solid var(--edge-soft); padding-bottom: 6px;
+  }
+  .city-row { display: flex; justify-content: space-between; font-size: 13px; padding-block: 2px; }
+  .city-row span:last-child { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--sage); }
+  .city-row.total { border-top: 1px solid var(--edge-soft); margin-top: 4px; padding-top: 6px; font-weight: 600; }
+  .city-row.total span:last-child { color: var(--brass); }
+  .city-list { display: flex; flex-direction: column; gap: 6px; }
+  .city-list .empty { color: var(--ink-faint); font-size: 12.5px; font-style: italic; }
+  .city-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    background: var(--panel-2); border: 1px solid var(--edge-soft); border-radius: 2px;
+    padding: 7px 10px; font-size: 12.5px;
+  }
+  .city-item .desc { color: var(--ink-faint); font-size: 11.5px; }
+  .city-item .badge-mini {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--sage); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .city-item .badge-mini svg { width: 65%; height: 65%; fill: rgba(0,0,0,0.72); }
+  .city-progress { height: 5px; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .city-progress-fill { height: 100%; background: var(--brass); }
+  button.view-city {
+    font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+    background: var(--panel-2); border: 1px solid var(--edge); color: var(--ink);
+    padding: 9px; border-radius: 2px; cursor: pointer; width: 100%; margin-top: 6px;
+  }
+  button.view-city:hover { border-color: var(--brass); color: var(--brass); }
+
+  footer.note { font-size: 12px; color: var(--ink-faint); line-height: 1.5; border-top: 1px solid var(--edge-soft); padding-top: 12px; }
+
+  /* ---------- Home / menu screens ---------- */
+  body.playing {
+    background-image:
+      repeating-conic-gradient(from 0deg at 50% 38%, rgba(214,154,63,0.05) 0deg 2deg, transparent 2deg 30deg),
+      radial-gradient(circle at 50% 38%, transparent 118px, rgba(214,154,63,0.09) 120px 123px, transparent 126px),
+      radial-gradient(circle at 50% 38%, transparent 210px, rgba(214,154,63,0.06) 212px 215px, transparent 218px),
+      radial-gradient(circle at 50% 38%, transparent 320px, rgba(127,160,110,0.05) 322px 325px, transparent 328px),
+      radial-gradient(ellipse at 50% 20%, var(--bg-2) 0%, var(--bg) 72%);
+    background-attachment: fixed;
+    background-size: cover;
+  }
+
+  .menu-overlay {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 6vh 16px;
+    background:
+      repeating-conic-gradient(from 0deg at 50% 34%, rgba(214,154,63,0.06) 0deg 2deg, transparent 2deg 26deg),
+      radial-gradient(circle at 50% 34%, transparent 140px, rgba(214,154,63,0.08) 142px 145px, transparent 148px),
+      radial-gradient(circle at 50% 34%, transparent 260px, rgba(127,160,110,0.06) 262px 265px, transparent 268px),
+      radial-gradient(ellipse at 50% 14%, var(--bg-2) 0%, var(--bg) 75%);
+  }
+  .menu-overlay[hidden] { display: none; }
+  .menu-card {
+    background: var(--panel); border: 1px solid var(--brass); border-radius: 4px;
+    padding: 26px 30px 30px; width: min(420px, 92vw); max-height: 82vh; overflow-y: auto;
+    box-shadow: 0 8px 28px var(--shadow);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .menu-card .home-eyebrow {
+    font-family: 'Oswald', sans-serif; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--brass); text-align: center; margin: 0 0 2px;
+  }
+  .menu-card h1.home-title {
+    font-family: 'Oswald', sans-serif; font-weight: 600; font-size: clamp(24px, 5vw, 32px);
+    text-align: center; margin: 0 0 4px;
+  }
+  .menu-card .home-sub {
+    color: var(--ink-dim); font-size: 13px; text-align: center; line-height: 1.5; margin: 0 0 14px;
+  }
+  .menu-card h2.menu-heading {
+    font-family: 'Oswald', sans-serif; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--brass); margin: 0 0 6px; text-align: center;
+  }
+  button.menu-btn {
+    font-family: 'Oswald', sans-serif; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase;
+    background: var(--panel-2); border: 1px solid var(--edge); color: var(--ink);
+    padding: 13px 16px; border-radius: 2px; cursor: pointer; width: 100%; font-weight: 600;
+    text-align: center;
+  }
+  button.menu-btn:hover { border-color: var(--brass); color: var(--brass); }
+  button.menu-btn.primary { background: var(--brass); color: var(--bg); border: none; }
+  button.menu-btn.primary:hover:not(:disabled) { filter: brightness(1.08); color: var(--bg); }
+  button.menu-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .menu-btn-desc { font-size: 12px; color: var(--ink-faint); text-align: center; margin: -4px 0 6px; line-height: 1.4; }
+
+  .howtoplay-text { color: var(--ink-dim); font-size: 13.5px; line-height: 1.65; margin: 0 0 16px; }
+
+  .slot-list, .hof-list { display: flex; flex-direction: column; gap: 8px; margin: 0 0 16px; }
+  .slot-item {
+    display: flex; align-items: stretch; gap: 6px;
+    background: var(--panel-2); border: 1px solid var(--edge); border-radius: 2px;
+  }
+  .slot-item:has(.slot-main:hover:not(:disabled)) { border-color: var(--brass); }
+  .slot-main {
+    display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;
+    background: transparent; border: none; border-radius: 2px;
+    padding: 10px 12px; cursor: pointer; text-align: left;
+    font-family: 'Spectral', serif; color: var(--ink);
+  }
+  .slot-main .slot-name { font-family: 'Oswald', sans-serif; font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brass); }
+  .slot-main .slot-meta { font-size: 12px; color: var(--ink-faint); }
+  .slot-item.empty .slot-main { cursor: default; color: var(--ink-faint); font-style: italic; }
+  .slot-item.empty .slot-main .slot-name { color: var(--ink-faint); }
+  .slot-item.empty.loadable .slot-main { cursor: not-allowed; }
+  button.slot-delete-btn {
+    flex-shrink: 0; width: 36px; margin: 6px 6px 6px 0;
+    background: transparent; border: 1px solid var(--edge-soft); border-radius: 2px;
+    color: var(--ink-faint); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  button.slot-delete-btn:hover { border-color: var(--rust); color: var(--rust); }
+  button.slot-delete-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+  .hof-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    background: var(--panel-2); border: 1px solid var(--edge-soft); border-radius: 2px;
+    padding: 9px 12px; font-size: 12.5px;
+  }
+  .hof-item .hof-result { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 12px; }
+  .hof-item.win .hof-result { color: var(--sage); }
+  .hof-item.loss .hof-result { color: var(--rust); }
+  .hof-item .hof-meta { color: var(--ink-faint); font-size: 11.5px; text-align: right; }
+  .hof-empty, .slot-list-empty { color: var(--ink-faint); font-style: italic; font-size: 13px; text-align: center; padding: 10px 0; }
+
+  .corner-actions { position: fixed; top: 18px; right: 18px; z-index: 15; display: flex; gap: 8px; }
+  button.icon-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--panel); border: 1px solid var(--edge); color: var(--brass);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  button.icon-btn:hover { border-color: var(--brass); }
+  button.icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
+  @media (max-width: 620px) { .corner-actions { top: 10px; right: 10px; } button.icon-btn { width: 34px; height: 34px; } }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Spectral:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Blocky, period-strategy-game-style silhouette icons. Each is a 12x12 pixel grid,
+         drawn with plain rects so they read as flat "unit counter" glyphs rather than art. -->
+    <symbol id="icon-harvester" viewBox="0 0 12 12">
+      <rect x="3" y="1" width="5" height="2" fill="#d9b877"/>
+      <rect x="3" y="1" width="5" height="1" fill="#eccf9b"/>
+      <rect x="2" y="3" width="8" height="4" fill="#8b5e34"/>
+      <rect x="2" y="3" width="8" height="1" fill="#a97540"/>
+      <rect x="1" y="4" width="1" height="2" fill="#5c3b1e"/>
+      <rect x="3" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="7" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="3" y="8" width="2" height="1" fill="#4a2f18" fill-opacity="0.7"/>
+      <rect x="7" y="8" width="2" height="1" fill="#4a2f18" fill-opacity="0.7"/>
+    </symbol>
+    <symbol id="icon-settler" viewBox="0 0 12 12">
+      <rect x="2" y="8" width="1" height="2" fill="#2c1c10"/>
+      <rect x="8" y="8" width="1" height="2" fill="#2c1c10"/>
+      <rect x="1" y="6" width="9" height="2" fill="#4a3728"/>
+      <rect x="1" y="6" width="9" height="1" fill="#63503c" fill-opacity="0.8"/>
+      <rect x="2" y="4" width="7" height="2" fill="#c9a668"/>
+      <rect x="4" y="3" width="2" height="1" fill="#e7c290"/>
+      <rect x="9" y="1" width="1" height="4" fill="#6b4a2c"/>
+      <rect x="10" y="1" width="2" height="2" fill="#d6a53f"/>
+    </symbol>
+    <symbol id="icon-scout" viewBox="0 0 12 12">
+      <rect x="2" y="6" width="7" height="3" fill="#8a5a30"/>
+      <rect x="2" y="6" width="7" height="1" fill="#a97540" fill-opacity="0.8"/>
+      <rect x="8" y="3" width="2" height="4" fill="#8a5a30"/>
+      <rect x="10" y="3" width="1" height="1" fill="#5c3b1e"/>
+      <rect x="3" y="3" width="2" height="3" fill="#4a2c14"/>
+      <rect x="2" y="9" width="1" height="2" fill="#2c1c10"/>
+      <rect x="4" y="9" width="1" height="2" fill="#2c1c10"/>
+      <rect x="6" y="9" width="1" height="2" fill="#2c1c10"/>
+      <rect x="8" y="9" width="1" height="2" fill="#2c1c10"/>
+      <rect x="5" y="2" width="2" height="1" fill="#5c6b47"/>
+    </symbol>
+    <symbol id="icon-lightInfantry" viewBox="0 0 12 12">
+      <rect x="4" y="2" width="2" height="2" fill="#d9a76d"/>
+      <rect x="3" y="4" width="4" height="4" fill="#3f5a78"/>
+      <rect x="3" y="4" width="4" height="1" fill="#5878a0" fill-opacity="0.8"/>
+      <rect x="3" y="8" width="1" height="3" fill="#2c2c2c"/>
+      <rect x="6" y="8" width="1" height="3" fill="#2c2c2c"/>
+      <rect x="7" y="2" width="1" height="5" fill="#6b4a2c"/>
+      <rect x="7" y="2" width="1" height="2" fill="#9aa0a6"/>
+    </symbol>
+    <symbol id="icon-antiArmorInfantry" viewBox="0 0 12 12">
+      <rect x="4" y="3" width="2" height="2" fill="#d9a76d"/>
+      <rect x="3" y="5" width="4" height="3" fill="#5c6b3f"/>
+      <rect x="3" y="5" width="4" height="1" fill="#788a54" fill-opacity="0.8"/>
+      <rect x="3" y="8" width="2" height="3" fill="#2c2c2c"/>
+      <rect x="6" y="8" width="1" height="2" fill="#2c2c2c"/>
+      <rect x="7" y="2" width="4" height="2" fill="#4a4a4a"/>
+      <rect x="10" y="2" width="1" height="2" fill="#c9963c"/>
+      <rect x="6" y="4" width="2" height="2" fill="#3f4a2c"/>
+    </symbol>
+    <symbol id="icon-lightVehicle" viewBox="0 0 12 12">
+      <rect x="2" y="6" width="8" height="3" fill="#b89a5a"/>
+      <rect x="2" y="6" width="8" height="1" fill="#d3b878" fill-opacity="0.8"/>
+      <rect x="4" y="4" width="4" height="2" fill="#6e7b6a"/>
+      <rect x="2" y="9" width="2" height="2" fill="#2c2c2c"/>
+      <rect x="8" y="9" width="2" height="2" fill="#2c2c2c"/>
+      <rect x="9" y="6" width="1" height="1" fill="#e0c060"/>
+    </symbol>
+    <symbol id="icon-heavyVehicle" viewBox="0 0 12 12">
+      <rect x="1" y="8" width="10" height="2" fill="#2c2c2c"/>
+      <rect x="2" y="5" width="8" height="3" fill="#4d5a45"/>
+      <rect x="2" y="5" width="8" height="1" fill="#647259" fill-opacity="0.8"/>
+      <rect x="5" y="3" width="3" height="2" fill="#5c6b52"/>
+      <rect x="8" y="3" width="3" height="1" fill="#333833"/>
+    </symbol>
+    <symbol id="icon-artillery" viewBox="0 0 12 12">
+      <rect x="2" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="7" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="3" y="7" width="6" height="1" fill="#6b4a2c"/>
+      <rect x="5" y="7" width="1" height="2" fill="#4a4a4a"/>
+      <rect x="6" y="3" width="5" height="2" fill="#4a4a4a"/>
+      <rect x="6" y="3" width="5" height="1" fill="#6b6b6b" fill-opacity="0.7"/>
+      <rect x="9" y="3" width="1" height="2" fill="#c9963c"/>
+    </symbol>
+    <symbol id="icon-flyer" viewBox="0 0 12 12">
+      <rect x="4" y="5" width="4" height="2" fill="#3d2c1c"/>
+      <rect x="1" y="4" width="3" height="1" fill="#c9b483"/>
+      <rect x="8" y="4" width="3" height="1" fill="#c9b483"/>
+      <rect x="8" y="5" width="2" height="1" fill="#c9b483" fill-opacity="0.7"/>
+      <rect x="5" y="4" width="2" height="1" fill="#c9963c"/>
+    </symbol>
+    <symbol id="icon-base" viewBox="0 0 12 12">
+      <rect x="1" y="4" width="10" height="6"/>
+      <rect x="1" y="3" width="1" height="1"/>
+      <rect x="3" y="3" width="1" height="1"/>
+      <rect x="5" y="3" width="1" height="1"/>
+      <rect x="7" y="3" width="1" height="1"/>
+      <rect x="9" y="3" width="1" height="1"/>
+      <rect x="5" y="0" width="1" height="3"/>
+      <rect x="6" y="0" width="2" height="2"/>
+      <rect x="5" y="7" width="2" height="3" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-goods" viewBox="0 0 12 12">
+      <rect x="2" y="4" width="8" height="6"/>
+      <rect x="2" y="4" width="8" height="1" fill-opacity="0.5"/>
+      <rect x="5" y="4" width="2" height="6" fill-opacity="0.5"/>
+    </symbol>
+    <symbol id="icon-frigate" viewBox="0 0 12 12">
+      <rect x="1" y="7" width="10" height="2" fill="#5c3b1e"/>
+      <rect x="1" y="7" width="10" height="1" fill="#7a5230" fill-opacity="0.8"/>
+      <rect x="2" y="9" width="8" height="1" fill="#2c1c10" fill-opacity="0.5"/>
+      <rect x="5" y="2" width="1" height="5" fill="#3d2c1c"/>
+      <rect x="6" y="3" width="4" height="1" fill="#e6dcc0"/>
+      <rect x="6" y="5" width="3" height="1" fill="#e6dcc0"/>
+    </symbol>
+    <symbol id="icon-carrier" viewBox="0 0 12 12">
+      <rect x="1" y="6" width="10" height="2" fill="#5a6068"/>
+      <rect x="1" y="5" width="10" height="1" fill="#787f88"/>
+      <rect x="2" y="8" width="8" height="1" fill="#2c2c2c" fill-opacity="0.5"/>
+      <rect x="8" y="2" width="2" height="4" fill="#3c4046"/>
+      <rect x="8" y="1" width="1" height="1" fill="#c9963c"/>
+      <rect x="3" y="5" width="1" height="1" fill="#b89a5a" fill-opacity="0.85"/>
+      <rect x="5" y="5" width="1" height="1" fill="#b89a5a" fill-opacity="0.85"/>
+    </symbol>
+    <symbol id="icon-battleship" viewBox="0 0 12 12">
+      <rect x="1" y="6" width="10" height="3" fill="#3c4652"/>
+      <rect x="1" y="6" width="10" height="1" fill="#556170" fill-opacity="0.8"/>
+      <rect x="2" y="9" width="8" height="1" fill="#181c20" fill-opacity="0.5"/>
+      <rect x="3" y="4" width="2" height="2" fill="#2c333a"/>
+      <rect x="7" y="4" width="2" height="2" fill="#2c333a"/>
+      <rect x="3" y="3" width="1" height="1" fill="#c9963c"/>
+      <rect x="8" y="3" width="1" height="1" fill="#c9963c"/>
+    </symbol>
+    <symbol id="icon-tree" viewBox="0 0 12 12">
+      <rect x="5" y="8" width="2" height="3"/>
+      <rect x="4" y="6" width="4" height="2"/>
+      <rect x="3" y="4" width="6" height="2"/>
+      <rect x="4" y="2" width="4" height="2"/>
+    </symbol>
+    <symbol id="icon-mountain" viewBox="0 0 12 12">
+      <rect x="1" y="9" width="10" height="1"/>
+      <rect x="2" y="7" width="3" height="2"/>
+      <rect x="4" y="5" width="3" height="2"/>
+      <rect x="3" y="7" width="1" height="1" fill-opacity="0.5"/>
+      <rect x="6" y="8" width="4" height="1"/>
+      <rect x="7" y="6" width="3" height="2"/>
+      <rect x="8" y="3" width="2" height="3"/>
+      <rect x="8" y="3" width="1" height="1" fill-opacity="0.6"/>
+    </symbol>
+    <symbol id="icon-barracks" viewBox="0 0 12 12">
+      <rect x="1" y="5" width="10" height="5"/>
+      <rect x="1" y="4" width="10" height="1" fill-opacity="0.6"/>
+      <rect x="5" y="2" width="2" height="3"/>
+      <rect x="4" y="7" width="1" height="3" fill-opacity="0.4"/>
+      <rect x="8" y="7" width="2" height="3" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-foundry" viewBox="0 0 12 12">
+      <rect x="2" y="6" width="8" height="4"/>
+      <rect x="7" y="1" width="2" height="5"/>
+      <rect x="7" y="1" width="2" height="1" fill-opacity="0.6"/>
+      <rect x="3" y="7" width="2" height="2" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-shipyard" viewBox="0 0 12 12">
+      <rect x="1" y="8" width="10" height="2"/>
+      <rect x="2" y="4" width="1" height="4"/>
+      <rect x="9" y="4" width="1" height="4"/>
+      <rect x="2" y="3" width="8" height="1" fill-opacity="0.6"/>
+      <rect x="5" y="1" width="2" height="2"/>
+    </symbol>
+    <symbol id="icon-brave" viewBox="0 0 12 12">
+      <rect x="4" y="2" width="2" height="2" fill="#c98a56"/>
+      <rect x="3" y="4" width="4" height="4" fill="#a8452f"/>
+      <rect x="3" y="4" width="4" height="1" fill="#c15b3f" fill-opacity="0.85"/>
+      <rect x="3" y="8" width="1" height="3" fill="#5c3b1e"/>
+      <rect x="6" y="8" width="1" height="3" fill="#5c3b1e"/>
+      <rect x="7" y="1" width="1" height="7" fill="#6b4a2c"/>
+      <rect x="7" y="1" width="1" height="2" fill="#9aa0a6"/>
+      <rect x="4" y="1" width="2" height="1" fill="#2f6f6a"/>
+    </symbol>
+    <symbol id="icon-rocketTubeBrave" viewBox="0 0 12 12">
+      <rect x="4" y="3" width="2" height="2" fill="#c98a56"/>
+      <rect x="3" y="5" width="4" height="3" fill="#a8452f"/>
+      <rect x="3" y="5" width="4" height="1" fill="#c15b3f" fill-opacity="0.85"/>
+      <rect x="3" y="8" width="2" height="3" fill="#5c3b1e"/>
+      <rect x="6" y="8" width="1" height="2" fill="#5c3b1e"/>
+      <rect x="7" y="2" width="4" height="2" fill="#4a4a4a"/>
+      <rect x="10" y="2" width="1" height="2" fill="#c9963c"/>
+      <rect x="4" y="2" width="2" height="1" fill="#2f6f6a"/>
+    </symbol>
+    <symbol id="icon-mountedRocketTubeBrave" viewBox="0 0 12 12">
+      <rect x="2" y="6" width="7" height="3" fill="#6b4a2c"/>
+      <rect x="2" y="6" width="7" height="1" fill="#8a6438" fill-opacity="0.8"/>
+      <rect x="8" y="3" width="2" height="4" fill="#6b4a2c"/>
+      <rect x="10" y="3" width="1" height="1" fill="#3d2c1c"/>
+      <rect x="3" y="3" width="2" height="3" fill="#3d2c1c"/>
+      <rect x="2" y="9" width="1" height="2" fill="#241a10"/>
+      <rect x="4" y="9" width="1" height="2" fill="#241a10"/>
+      <rect x="6" y="9" width="1" height="2" fill="#241a10"/>
+      <rect x="8" y="9" width="1" height="2" fill="#241a10"/>
+      <rect x="4" y="1" width="4" height="1" fill="#4a4a4a"/>
+      <rect x="4" y="2" width="1" height="1" fill="#2f6f6a"/>
+    </symbol>
+    <symbol id="icon-tankBrave" viewBox="0 0 12 12">
+      <rect x="1" y="8" width="10" height="2" fill="#2c2c2c"/>
+      <rect x="2" y="5" width="8" height="3" fill="#8a6438"/>
+      <rect x="2" y="5" width="8" height="1" fill="#a8452f" fill-opacity="0.6"/>
+      <rect x="5" y="3" width="3" height="2" fill="#6b4a2c"/>
+      <rect x="8" y="3" width="3" height="1" fill="#333833"/>
+      <rect x="5" y="2" width="1" height="1" fill="#2f6f6a"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap" id="gameScreen" hidden>
+  <div class="corner-actions">
+    <button class="icon-btn" id="saveIconBtn" title="Save game" aria-label="Save game"><svg viewBox="0 0 24 24"><path d="M5 3h11l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm1 2v16h12V8.83L15.17 5H15v5H8V5H6zm4 0v3h3V5h-3zM7 14h10v2H7v-2zm0 4h10v2H7v-2z"/></svg></button>
+    <button class="icon-btn" id="menuIconBtn" title="Main menu" aria-label="Main menu"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg></button>
+  </div>
+  <header>
+    <div class="titleblock">
+      <div class="eyebrow">Adamito's Game &middot; Phase 1 Vertical Slice</div>
+      <h1>First Reckoning</h1>
+      <p class="sub">One map, two factions, the shared roster. Harvest to speed up production, research unlocks the heavier units, and destroying the enemy base ends it.</p>
+    </div>
+    <div class="hud">
+      <div class="hud-stat"><span class="k">Turn</span><span class="v" id="hudTurn">1</span></div>
+      <div class="hud-stat player"><span class="k">Your Production</span><span class="v" id="hudPlayerProd">0</span></div>
+      <div class="hud-stat player"><span class="k">Your Cities</span><span class="v" id="hudPlayerCities">1</span></div>
+      <div class="hud-stat ai"><span class="k">AI Production</span><span class="v" id="hudAiProd">0</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="board-panel">
+      <div class="board-scroll" id="boardScroll">
+        <div class="board" id="board"></div>
+      </div>
+      <p class="board-hint">Map is bigger than the view — drag/scroll to explore. Islands are separated by water; a Frigate carries land units across.</p>
+    </div>
+
+    <div class="side-col">
+      <div class="panel">
+        <h2>Selection</h2>
+        <div id="selectionBody"><p class="sel-empty">Click one of your units or your base.</p></div>
+      </div>
+
+      <div class="panel">
+        <h2>Build Queue</h2>
+        <select id="buildSelect"></select>
+        <div class="hint" id="queueHint">Base is idle.</div>
+      </div>
+
+      <div class="panel">
+        <h2>Research</h2>
+        <div id="techList"></div>
+      </div>
+
+      <button class="end-turn" id="endTurnBtn">End Turn</button>
+
+      <div class="panel">
+        <h2>Log</h2>
+        <ul class="log-list" id="logList"><li class="empty">Turn 1 begins.</li></ul>
+      </div>
+    </div>
+  </div>
+
+  <footer class="note">
+    v0.2 simplifications, flagged so they don't get mistaken for final design: attacking resolves at range (no move-then-attack sequencing), no fog of war, tech unlocks linearly rather than branching, and production/research accrue at a flat rate rather than population growth. Forest costs 2 movement and gives the defender +2 defense; mountains cost 3 and give +3. The river is naval-only and splits the map except at the ford in the top row — the Frigate starts pre-placed on it since there's no dock/coastal-production mechanic yet to build one from a landlocked base.
+  </footer>
+</div>
+
+<div class="result-overlay" id="resultOverlay" hidden>
+  <div class="result-card">
+    <h2 id="resultTitle">Victory</h2>
+    <p id="resultBody"></p>
+    <div style="display:flex; gap:10px;">
+      <button class="end-turn" id="restartBtn" style="width:auto;padding-inline:24px;">Play Again</button>
+      <button class="cancel" id="resultMenuBtn" style="width:auto;padding-inline:20px;">Main Menu</button>
+    </div>
+  </div>
+</div>
+
+<div class="result-overlay" id="combatOverlay" hidden>
+  <div class="combat-card">
+    <h2>Combat Analysis</h2>
+    <div class="combat-compare">
+      <div class="combat-side player">
+        <div class="badge" id="combatAttackerBadge"></div>
+        <div class="name" id="combatAttackerName"></div>
+        <div class="mini-stats" id="combatAttackerStats"></div>
+        <div class="terrain-note" id="combatAttackerTerrain"></div>
+      </div>
+      <div class="combat-vs-mark">VS</div>
+      <div class="combat-side enemy">
+        <div class="badge" id="combatDefenderBadge"></div>
+        <div class="name" id="combatDefenderName"></div>
+        <div class="mini-stats" id="combatDefenderStats"></div>
+        <div class="terrain-note" id="combatDefenderTerrain"></div>
+      </div>
+    </div>
+    <div class="combat-result">
+      <div class="col"><span class="lbl">You Deal</span><span class="num dealt" id="combatDealt">0</span></div>
+      <div class="col"><span class="lbl">You Take</span><span class="num taken" id="combatTaken">0</span></div>
+    </div>
+    <div class="combat-actions">
+      <button class="cancel" id="combatCancelBtn">Cancel</button>
+      <button class="end-turn" id="combatConfirmBtn">Confirm Attack</button>
+    </div>
+  </div>
+</div>
+
+<div class="result-overlay" id="cityOverlay" hidden>
+  <div class="city-card">
+    <h2 id="cityTitle">Inside Your Base</h2>
+
+    <div class="city-section">
+      <h3>Production (shared across your cities)</h3>
+      <div class="city-row"><span>Base rate</span><span id="cityBaseVal">+2</span></div>
+      <div class="city-row"><span>Harvesting bonus</span><span id="cityHarvestVal">+0</span></div>
+      <div class="city-row"><span>Extra cities bonus</span><span id="cityCitiesVal">+0</span></div>
+      <div class="city-row"><span>Building bonus</span><span id="cityBuildingVal">+0</span></div>
+      <div class="city-row total"><span>Total / turn</span><span id="cityTotalVal">2</span></div>
+    </div>
+
+    <div class="city-section">
+      <h3>Buildings</h3>
+      <div id="cityBuildingsList" class="city-list"></div>
+    </div>
+
+    <div class="city-section">
+      <h3>Build Queue</h3>
+      <div id="cityQueueList" class="city-list"></div>
+    </div>
+
+    <div class="city-section">
+      <h3>Garrison</h3>
+      <div id="cityGarrisonList" class="city-list"></div>
+    </div>
+
+    <button class="cancel" id="cityCloseBtn">Close</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="homeOverlay">
+  <div class="menu-card">
+    <div class="home-eyebrow">Adamito's Game &middot; Phase 1</div>
+    <h1 class="home-title">First Reckoning</h1>
+    <p class="home-sub">One map, the shared roster, a reckoning to settle.</p>
+    <button class="menu-btn primary" id="homePlayBtn">Play New Game</button>
+    <button class="menu-btn" id="homeLoadBtn">Load Game</button>
+    <button class="menu-btn" id="homeHowToBtn">How to Play</button>
+    <button class="menu-btn" id="homeHofBtn">Hall of Fame</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="difficultyOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Choose Your Difficulty</h2>
+    <button class="menu-btn" id="diffBabyBtn">Baby Mode</button>
+    <div class="menu-btn-desc">The AI builds and researches slowly. A relaxed first skirmish.</div>
+    <button class="menu-btn" id="diffMediumBtn">Medium</button>
+    <div class="menu-btn-desc">The AI plays at a standard, even pace.</div>
+    <button class="menu-btn" id="diffHardBtn">Hard</button>
+    <div class="menu-btn-desc">The AI builds and researches faster and comes at you harder.</div>
+    <button class="menu-btn" id="diffBackBtn" style="margin-top:6px;">Back</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="loadOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Load Game</h2>
+    <div class="slot-list" id="loadSlotList"></div>
+    <button class="menu-btn" id="loadBackBtn">Back</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="saveOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Save Game</h2>
+    <div class="slot-list" id="saveSlotList"></div>
+    <button class="menu-btn" id="saveBackBtn">Cancel</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="howToPlayOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">How to Play</h2>
+    <p class="howtoplay-text">You and the AI each start with one city, a Harvester, a Scout, and a Settler on a fogged, procedurally generated island map — every new game reshuffles the terrain, so scout before you commit. Harvesters parked on a goods tile add production; that shared production pool (plus a bonus for every extra city you found) funds your build queue, while research slowly unlocks stronger units and buildings. Move units around the grid and click an enemy unit or base within reach to see a Combat Analysis of damage dealt and taken before you confirm the attack — infantry counters vehicles, vehicles hit hard in the open, artillery is built to crack bases, and flyers ignore terrain entirely. Settlers found new cities on open, non-mountain ground away from existing ones; Frigates, Carriers, and Battleships (built from a coastal Shipyard) ferry land units across water to other islands. Scattered native camps are neutral until a Scout stands next to one — ask for peace to make that camp permanently safe, or strike a war plan (handing over a spare infantry unit as tribute) to turn its garrison into an ally that fights the AI for you. Whoever loses every city loses the game; end your turn with the End Turn button once you've moved, built, and attacked for the round.</p>
+    <button class="menu-btn" id="howToBackBtn">Back</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="hallOfFameOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Hall of Fame</h2>
+    <div class="hof-list" id="hofList"></div>
+    <button class="menu-btn" id="hofBackBtn">Back</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---------- DATA ----------
+  var UNIT_TYPES = {
+    harvester: { id: "harvester", name: "Harvester", short: "HV", category: "economy", domain: "land", attack: 4, defense: 1, hp: 8, movement: 2, cost: 4, attackOnly: "infantry", defenseBonusVs: { infantry: 5 }, notes: "Unarmored, but its bulk can run over an adjacent enemy Infantry unit — can't target anything else. Takes very little damage back from the Infantry it tramples; still fragile against everything else." },
+    settler: { id: "settler", name: "Settler", short: "ST", category: "economy", domain: "land", attack: 1, defense: 1, hp: 6, movement: 2, cost: 6, cargoSlotCost: 2, canFoundCity: true, notes: "Select it and use Found City on open ground away from existing cities to start a new one — it's consumed in the founding. Takes 2 cargo slots aboard a ship." },
+    aiSettler: { id: "aiSettler", name: "Settler", short: "ST", category: "economy", domain: "land", attack: 1, defense: 0, hp: 6, movement: 2, cost: 6, cargoSlotCost: 2, canFoundCity: true, icon: "settler", notes: "The AI's colonizing arm — a bit weaker in defense than yours." },
+    scout: { id: "scout", name: "Scout", short: "SC", category: "vehicle", domain: "land", attack: 0, defense: 1, hp: 4, movement: 4, cost: 2 },
+    lightInfantry: { id: "lightInfantry", name: "Light Infantry", short: "LI", category: "infantry", domain: "land", attack: 3, defense: 2, hp: 6, movement: 1, cost: 4, attackBonusVs: {} },
+    antiArmorInfantry: { id: "antiArmorInfantry", name: "Anti-Armor Infantry", short: "AA", category: "infantry", domain: "land", attack: 3, defense: 4, hp: 9, movement: 1, cost: 3, attackBonusVs: {}, armorPenetrationVs: { vehicle: 3 } },
+    lightVehicle: { id: "lightVehicle", name: "Light Vehicle", short: "LV", category: "vehicle", domain: "land", attack: 5, defense: 2, hp: 8, movement: 3, cost: 4, attackBonusVs: { infantry: 1.5 } },
+    heavyVehicle: { id: "heavyVehicle", name: "Heavy Vehicle", short: "HV2", category: "vehicle", domain: "land", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, attackBonusVs: { infantry: 1.25 } },
+    artillery: { id: "artillery", name: "Artillery", short: "AR", category: "siege", domain: "land", attack: 10, defense: 1, hp: 6, movement: 1, cost: 7, attackBonusVs: {} },
+    flyer: { id: "flyer", name: "Ornithopter", short: "OR", category: "air", domain: "land", attack: 5, defense: 2, hp: 7, movement: 5, cost: 9, attackBonusVs: {} },
+    frigate: { id: "frigate", name: "Frigate", short: "FR", category: "naval", domain: "naval", attack: 6, defense: 4, hp: 10, movement: 4, cost: 30, capacity: 3, attackBonusVs: {}, notes: "One is pre-placed per side at the start; after that it's built at a coastal city with a Shipyard. Carries up to 3 cargo slots (a Settler takes 2); if it sinks, everything aboard sinks with it." },
+    carrier: { id: "carrier", name: "Carrier", short: "CV", category: "naval", domain: "naval", attack: 2, defense: 7, hp: 16, movement: 3, cost: 40, capacity: 5, attackBonusVs: {}, notes: "Weak offense, but a tough hull built to ferry troops — 5 cargo slots (a Settler takes 2)." },
+    battleship: { id: "battleship", name: "Battleship", short: "BB", category: "naval", domain: "naval", attack: 10, defense: 10, hp: 22, movement: 3, cost: 80, capacity: 1, attackBonusVs: {}, notes: "The heaviest warship afloat. Only 1 cargo slot — too tight for a Settler (needs 2)." },
+    // Native garrison roster — matches the tiers proven out in The Reckoning
+    // Table (Phase 0). These are never buildable by the player or the AI;
+    // they only ever appear pre-placed as a native camp's garrison.
+    brave: { id: "brave", name: "Brave", short: "BR", category: "infantry", domain: "land", attack: 1, defense: 1, hp: 4, movement: 1, cost: 1, attackBonusVs: {}, notes: "Base native unit, unarmed with modern weapons." },
+    rocketTubeBrave: { id: "rocketTubeBrave", name: "Rocket Tube Brave", short: "RT", category: "infantry", domain: "land", attack: 4, defense: 4, hp: 6, movement: 1, cost: 3, attackBonusVs: {}, notes: "Brave armed with a rocket tube." },
+    mountedRocketTubeBrave: { id: "mountedRocketTubeBrave", name: "Mounted Rocket Tube Brave", short: "MR", category: "infantry", domain: "land", attack: 6, defense: 4, hp: 7, movement: 3, cost: 5, attackBonusVs: {}, notes: "Rocket Tube Brave on horseback — faster, same firepower." },
+    tankBrave: { id: "tankBrave", name: "Indian in Tank", short: "IT", category: "vehicle", domain: "land", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, attackBonusVs: {}, notes: "Native unit crewing a captured tank — same weight class as the colonial Heavy Vehicle." }
+  };
+  var BASE_STATS = { name: "Base", attack: 0, defense: 5, hp: 20, category: "base" };
+  // A native camp fights back on its own — much tougher than an ordinary
+  // city, which has no attack of its own and relies entirely on its garrison.
+  var NATIVE_CAMP_STATS = { name: "Native Camp", attack: 10, defense: 10, hp: 20, category: "base" };
+  var NATIVE_CAMP_MAX = 6; // hard cap on how many native camps ever exist on the map
+  // Weighted so most camps are lightly held, with an occasional armed,
+  // mounted, or tank-garrisoned camp to keep raiding them risky.
+  var NATIVE_GARRISON_POOL = ["brave", "brave", "brave", "rocketTubeBrave", "rocketTubeBrave", "mountedRocketTubeBrave", "tankBrave"];
+
+  function cargoSlotCost(typeId) { return UNIT_TYPES[typeId].cargoSlotCost || 1; }
+  // Some unit types (e.g. the AI's aiSettler) reuse another type's icon
+  // symbol rather than having their own.
+  function iconIdFor(type) { return type.icon || type.id; }
+  function cargoOccupied(shipUnit) {
+    return shipUnit.cargo.reduce(function (sum, c) { return sum + cargoSlotCost(c.typeId); }, 0);
+  }
+
+  var TECHS = [
+    { id: "tech1", name: "Armor Piercing", cost: 6, unlocks: ["antiArmorInfantry", "lightVehicle"] },
+    { id: "tech2", name: "Heavy Fabrication", cost: 14, unlocks: ["heavyVehicle", "artillery"] },
+    { id: "tech3", name: "Flight", cost: 24, unlocks: ["flyer"] }
+  ];
+  var STARTING_UNLOCKS = ["harvester", "scout", "settler", "lightInfantry"];
+  var MIN_CITY_DISTANCE = 4; // Chebyshev tiles a new city must keep from every existing city
+
+  var BUILDING_TYPES = {
+    barracks: { id: "barracks", name: "Barracks", cost: 10, prodBonus: 2, desc: "+2 production per turn." },
+    foundry: { id: "foundry", name: "Foundry", cost: 20, prodBonus: 3, desc: "+3 production per turn." },
+    shipyard: { id: "shipyard", name: "Shipyard", cost: 60, prodBonus: 0, desc: "Unlocks Frigates, Carriers, and Battleships. Requires a coastal city.", grantsUnlocks: ["frigate", "carrier", "battleship"] }
+  };
+  var BUILDING_ORDER = ["barracks", "foundry", "shipyard"];
+
+  // ---------- MAP GENERATION ----------
+  // A big ocean seeded with several separate islands — a couple of large
+  // ones (the player's and the AI's home turf) plus a scatter of small and
+  // medium ones in between for settlers to sail to and colonize. Regenerated
+  // fresh every new game, so no two playthroughs share a map.
+  var COLS = 28, ROWS = 18;
+  var TILE_PX = 34;
+  var TERRAIN_GRID = null;   // [y][x] -> "water" | "plain" | "forest" | "mountain"
+  var RESOURCE_GRID = null;  // [y][x] -> bool
+  var RESOURCE_LIST = [];    // flat [[x,y],...] mirror of RESOURCE_GRID, for AI pathing
+  var ISLAND_GRID = null;    // [y][x] -> island index, or -1 for water
+
+  // ---------- HOME SCREEN / SAVES / HALL OF FAME ----------
+  var SAVE_SLOTS = 5;
+  var LS_SAVES_KEY = "adamitosGame.saves.v1";
+  var LS_HOF_KEY = "adamitosGame.hallOfFame.v1";
+  var DIFFICULTY_LABEL = { baby: "Baby Mode", medium: "Medium", hard: "Hard" };
+  // Baby/Hard tune the AI's production+research pace only — a deliberately
+  // simple lever rather than reworking its decision-making per difficulty.
+  var DIFFICULTY_AI_MULT = { baby: 0.6, medium: 1, hard: 1.5 };
+
+  function setBoardCssVars() {
+    document.getElementById("board").style.setProperty("--cols", COLS);
+    document.getElementById("board").style.setProperty("--rows", ROWS);
+    document.getElementById("board").style.setProperty("--tile-px", TILE_PX + "px");
+  }
+
+  function loadSaveSlots() {
+    try {
+      var raw = localStorage.getItem(LS_SAVES_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      while (arr.length < SAVE_SLOTS) arr.push(null);
+      return arr.slice(0, SAVE_SLOTS);
+    } catch (e) { return new Array(SAVE_SLOTS).fill(null); }
+  }
+  function writeSaveSlots(arr) {
+    try { localStorage.setItem(LS_SAVES_KEY, JSON.stringify(arr)); } catch (e) {}
+  }
+  function deleteSaveSlot(idx) {
+    var slots = loadSaveSlots();
+    slots[idx] = null;
+    writeSaveSlots(slots);
+  }
+  function saveGameToSlot(idx) {
+    var slots = loadSaveSlots();
+    slots[idx] = {
+      savedAt: Date.now(),
+      difficulty: state.difficulty || "medium",
+      turn: state.turn,
+      cities: state.player.bases.filter(function (b) { return b.alive; }).length,
+      cols: COLS, rows: ROWS,
+      snapshot: {
+        state: state,
+        terrain: TERRAIN_GRID, resource: RESOURCE_GRID, resourceList: RESOURCE_LIST, island: ISLAND_GRID
+      }
+    };
+    writeSaveSlots(slots);
+    return true;
+  }
+  function loadGameFromSlot(idx) {
+    var slots = loadSaveSlots();
+    var slot = slots[idx];
+    if (!slot) return false;
+    var snap = slot.snapshot;
+    TERRAIN_GRID = snap.terrain;
+    RESOURCE_GRID = snap.resource;
+    RESOURCE_LIST = snap.resourceList;
+    ISLAND_GRID = snap.island;
+    state = snap.state;
+    return true;
+  }
+
+  function loadHallOfFame() {
+    try {
+      var raw = localStorage.getItem(LS_HOF_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function recordHallOfFame(result) {
+    try {
+      var arr = loadHallOfFame();
+      arr.unshift({ result: result, turn: state.turn, difficulty: state.difficulty || "medium", date: Date.now() });
+      if (arr.length > 50) arr.length = 50;
+      localStorage.setItem(LS_HOF_KEY, JSON.stringify(arr));
+    } catch (e) {}
+  }
+  function formatSavedAt(ts) {
+    try { return new Date(ts).toLocaleString(); } catch (e) { return ""; }
+  }
+
+  function terrainAt(x, y) {
+    if (!inBounds(x, y)) return "water";
+    return TERRAIN_GRID[y][x];
+  }
+
+  function inBoundsRaw(x, y) { return x >= 0 && x < COLS && y >= 0 && y < ROWS; }
+
+  // Grows a blobby island of roughly targetSize tiles from a seed tile via
+  // randomized frontier expansion. Refuses to expand into any tile whose
+  // 8-neighborhood already touches a DIFFERENT island, so islands never
+  // merge or end up sharing a coastline — crossing between them always
+  // means going by water.
+  function neighborsClear(x, y, islandOf, idx) {
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        var nx = x + dx, ny = y + dy;
+        if (!inBoundsRaw(nx, ny)) continue;
+        var owner = islandOf[ny][nx];
+        if (owner !== -1 && owner !== idx) return false;
+      }
+    }
+    return true;
+  }
+
+  function shuffled(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  function growIsland(sx, sy, targetSize, idx, terrain, islandOf) {
+    var tiles = [[sx, sy]];
+    terrain[sy][sx] = "plain";
+    islandOf[sy][sx] = idx;
+    var frontier = [[sx, sy]];
+    var guard = 0;
+    while (tiles.length < targetSize && frontier.length && guard < targetSize * 25) {
+      guard++;
+      var i = Math.floor(Math.random() * frontier.length);
+      var cur = frontier[i];
+      var dirs = shuffled([[1, 0], [-1, 0], [0, 1], [0, -1]]);
+      var expanded = false;
+      for (var d = 0; d < dirs.length; d++) {
+        var nx = cur[0] + dirs[d][0], ny = cur[1] + dirs[d][1];
+        if (!inBoundsRaw(nx, ny)) continue;
+        if (terrain[ny][nx] !== "water") continue;
+        if (!neighborsClear(nx, ny, islandOf, idx)) continue;
+        terrain[ny][nx] = "plain";
+        islandOf[ny][nx] = idx;
+        tiles.push([nx, ny]);
+        frontier.push([nx, ny]);
+        expanded = true;
+        if (tiles.length >= targetSize) break;
+      }
+      if (!expanded) frontier.splice(i, 1);
+    }
+    return tiles;
+  }
+
+  function chebyshev(a, b) { return Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])); }
+
+  // Scatters forest/mountain/resource dressing across land, then clears a
+  // safe starting pocket around each capital so the opening moves aren't
+  // immediately blocked by terrain.
+  function dressAndFinalize(terrain, islands, playerIsland, aiIsland) {
+    var resource = [];
+    for (var y = 0; y < ROWS; y++) resource.push(new Array(COLS).fill(false));
+
+    islands.forEach(function (isl) {
+      isl.tiles.forEach(function (t) {
+        var x = t[0], y = t[1];
+        var roll = Math.random();
+        if (roll < 0.09) terrain[y][x] = "mountain";
+        else if (roll < 0.09 + 0.16) terrain[y][x] = "forest";
+      });
+    });
+
+    var resourceList = [];
+    islands.forEach(function (isl) {
+      isl.tiles.forEach(function (t) {
+        var x = t[0], y = t[1];
+        if (terrain[y][x] === "plain" && Math.random() < 0.12) {
+          resource[y][x] = true;
+          resourceList.push([x, y]);
+        }
+      });
+    });
+
+    [playerIsland.seed, aiIsland.seed].forEach(function (cap) {
+      for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+          var x = cap[0] + dx, y = cap[1] + dy;
+          if (!inBoundsRaw(x, y)) continue;
+          if (terrain[y][x] === "water") continue;
+          terrain[y][x] = "plain";
+          if (resource[y][x]) {
+            resource[y][x] = false;
+            resourceList = resourceList.filter(function (r) { return !(r[0] === x && r[1] === y); });
+          }
+        }
+      }
+    });
+
+    return { terrain: terrain, resource: resource, resourceList: resourceList };
+  }
+
+  function generateMap() {
+    for (var attempt = 0; attempt < 25; attempt++) {
+      var terrain = [], islandOf = [];
+      for (var y = 0; y < ROWS; y++) {
+        terrain.push(new Array(COLS).fill("water"));
+        islandOf.push(new Array(COLS).fill(-1));
+      }
+
+      var islands = [];
+      var islandCount = 6 + Math.floor(Math.random() * 4);
+      var tries = 0;
+      while (islands.length < islandCount && tries < islandCount * 40) {
+        tries++;
+        var sx = Math.floor(Math.random() * COLS), sy = Math.floor(Math.random() * ROWS);
+        if (terrain[sy][sx] !== "water" || !neighborsClear(sx, sy, islandOf, islands.length)) continue;
+        var targetSize;
+        if (islands.length < 2) targetSize = 40 + Math.floor(Math.random() * 30);
+        else if (Math.random() < 0.4) targetSize = 18 + Math.floor(Math.random() * 18);
+        else targetSize = 3 + Math.floor(Math.random() * 8);
+        var tiles = growIsland(sx, sy, targetSize, islands.length, terrain, islandOf);
+        if (tiles.length < 3) continue;
+        islands.push({ seed: [sx, sy], tiles: tiles });
+      }
+
+      var eligible = islands.filter(function (isl) { return isl.tiles.length >= 25; });
+      if (eligible.length < 2) continue;
+
+      var bestPair = null, bestD = -1;
+      for (var i = 0; i < eligible.length; i++) {
+        for (var j = i + 1; j < eligible.length; j++) {
+          var d = chebyshev(eligible[i].seed, eligible[j].seed);
+          if (d > bestD) { bestD = d; bestPair = [i, j]; }
+        }
+      }
+      var playerIsland = eligible[bestPair[0]];
+      var aiIsland = eligible[bestPair[1]];
+      var dressed = dressAndFinalize(terrain, islands, playerIsland, aiIsland);
+      return {
+        terrain: dressed.terrain, resource: dressed.resource, resourceList: dressed.resourceList, islandGrid: islandOf,
+        playerCapital: playerIsland.seed, aiCapital: aiIsland.seed
+      };
+    }
+    // Astronomically unlikely fallback: two small guaranteed islands so the game can still start.
+    var fallbackTerrain = [], fallbackResource = [], fallbackIslandGrid = [];
+    for (var fy = 0; fy < ROWS; fy++) {
+      fallbackTerrain.push(new Array(COLS).fill("water"));
+      fallbackResource.push(new Array(COLS).fill(false));
+      fallbackIslandGrid.push(new Array(COLS).fill(-1));
+    }
+    for (var fy2 = 0; fy2 < 3; fy2++) for (var fx2 = 0; fx2 < 3; fx2++) { fallbackTerrain[fy2][fx2] = "plain"; fallbackIslandGrid[fy2][fx2] = 0; }
+    for (var fy3 = 0; fy3 < 3; fy3++) for (var fx3 = COLS - 3; fx3 < COLS; fx3++) { fallbackTerrain[fy3][fx3] = "plain"; fallbackIslandGrid[fy3][fx3] = 1; }
+    return {
+      terrain: fallbackTerrain, resource: fallbackResource, resourceList: [], islandGrid: fallbackIslandGrid,
+      playerCapital: [1, 1], aiCapital: [COLS - 2, 1]
+    };
+  }
+
+  function islandIdAt(x, y) { return inBoundsRaw(x, y) ? ISLAND_GRID[y][x] : -1; }
+  function isCoastal(cityObj) {
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var i = 0; i < dirs.length; i++) {
+      var nx = cityObj.x + dirs[i][0], ny = cityObj.y + dirs[i][1];
+      if (inBoundsRaw(nx, ny) && terrainAt(nx, ny) === "water") return true;
+    }
+    return false;
+  }
+  function factionHasCoastalCity(f) { return f.bases.some(function (b) { return b.alive && isCoastal(b); }); }
+  function moveCost(terrain, domain, category) {
+    if (domain === "naval") return terrain === "water" ? 1 : Infinity;
+    if (terrain === "water") return Infinity;
+    if (terrain === "mountain") return 3;
+    if (terrain === "forest") return category === "infantry" ? 1 : 2; // infantry moves through forest at normal speed
+    return 1;
+  }
+  function defenseBonus(terrain) {
+    if (terrain === "mountain") return 3;
+    if (terrain === "forest") return 2;
+    return 0;
+  }
+  function terrainLabel(terrain) {
+    return terrain === "water" ? "River" : terrain === "mountain" ? "Mountain" : terrain === "forest" ? "Forest" : "Plain";
+  }
+
+  // ---------- COMBAT (mirrors src/combat.ts) ----------
+  function attackMultiplier(a, cat) { return (a.attackBonusVs && a.attackBonusVs[cat]) || 1; }
+  function armorPenetration(a, cat) { return (a.armorPenetrationVs && a.armorPenetrationVs[cat]) || 0; }
+  // Extra flat defense a unit gets specifically against attackers of a given
+  // category — e.g. the Harvester shrugs off almost all of an Infantry unit's
+  // counterattack when it runs one over, while staying fragile to everyone else.
+  function defenseBonusVs(d, attackerCat) { return (d.defenseBonusVs && d.defenseBonusVs[attackerCat]) || 0; }
+  function computeDamage(attacker, defender, terrainBonus) {
+    var mult = attackMultiplier(attacker, defender.category);
+    var pen = armorPenetration(attacker, defender.category);
+    var bonusDef = defenseBonusVs(defender, attacker.category);
+    var effDef = Math.max(0, defender.defense + (terrainBonus || 0) + bonusDef - pen);
+    return Math.max(1, Math.round(attacker.attack * mult - effDef));
+  }
+
+  // ---------- STATE ----------
+  var state = null;
+
+  function key(x, y) { return x + "," + y; }
+  function inBounds(x, y) { return x >= 0 && x < COLS && y >= 0 && y < ROWS; }
+  function isResourceTile(x, y) { return inBounds(x, y) && RESOURCE_GRID[y][x]; }
+
+  function cityLabel(faction, cityObj) {
+    var idx = faction.bases.indexOf(cityObj);
+    if (cityObj.isCamp) return "Camp " + (idx + 1);
+    return idx <= 0 ? "Capital" : "City " + (idx + 1);
+  }
+  function findCityById(faction, id) {
+    for (var i = 0; i < faction.bases.length; i++) if (faction.bases[i].id === id) return faction.bases[i];
+    return null;
+  }
+  // isCamp switches a founded base over to the tougher native-camp stats
+  // (attack 10 / defense 10) instead of the ordinary player/AI base stats
+  // (attack 0 / defense 5) — a camp fights back on its own, a city doesn't.
+  function makeCity(x, y, isCamp) {
+    var st = isCamp ? NATIVE_CAMP_STATS : BASE_STATS;
+    // pact: null (unmet), "peace" (won't be attacked by the player), or
+    // "war" (peace, plus the camp's garrison actively fights the AI) —
+    // only ever set through a Scout negotiating with a native camp.
+    return { id: "c" + (state.nextCityId++), x: x, y: y, hp: st.hp, maxHp: st.hp, attack: st.attack, defense: st.defense, alive: true, isCamp: !!isCamp, pact: null };
+  }
+  function foundCity(f, x, y, isCamp) {
+    var c = makeCity(x, y, isCamp);
+    f.bases.push(c);
+    return c;
+  }
+  function isValidCitySite(x, y) {
+    var terrain = terrainAt(x, y);
+    if (terrain === "water" || terrain === "mountain") return false;
+    var all = state.player.bases.concat(state.ai.bases).concat(state.natives ? state.natives.bases : []);
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].alive && chebyshev([x, y], [all[i].x, all[i].y]) < MIN_CITY_DISTANCE) return false;
+    }
+    return true;
+  }
+
+  function makeFaction(id, isAI) {
+    // The AI's colonizing unit is a distinct type (aiSettler) so it can carry
+    // slightly weaker stats than the player's Settler while sharing all the
+    // same founding logic.
+    var unlocked = STARTING_UNLOCKS.map(function (u) { return (isAI && u === "settler") ? "aiSettler" : u; });
+    return {
+      id: id, isAI: isAI, bases: [],
+      units: [], production: 0, research: 0, unlocked: unlocked,
+      techIndex: 0, buildQueue: [], buildings: []
+    };
+  }
+
+  // The natives are a third, neutral, non-playable faction: no production,
+  // research, tech, or build queue, because they never build anything —
+  // their camps and garrisons are placed once at map generation and that's
+  // it (see placeNativeCamps). They never take a turn of their own; they
+  // only ever fight back when something attacks them.
+  function makeNativesFaction() {
+    return { id: "natives", isAI: false, bases: [], units: [], production: 0, research: 0, unlocked: [], techIndex: 0, buildQueue: [], buildings: [] };
+  }
+
+  // Scatters up to NATIVE_CAMP_MAX native camps across whatever open,
+  // non-mountain land is left once the player's and AI's capitals exist —
+  // reuses isValidCitySite's own distance rule so camps never crowd a city
+  // (or each other), and never founds more once placed: natives can't
+  // found new camps. Each camp gets a small, randomly-tiered garrison drawn
+  // from NATIVE_GARRISON_POOL, so most are lightly held but a few pack a
+  // Rocket Tube Brave, a mounted rider, or an Indian in Tank.
+  function placeNativeCamps(natives) {
+    var candidates = [];
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if (isValidCitySite(x, y) && !unitAt(x, y) && !baseAt(x, y)) candidates.push([x, y]);
+      }
+    }
+    candidates = shuffled(candidates);
+    var target = Math.min(NATIVE_CAMP_MAX, candidates.length, 3 + Math.floor(Math.random() * 4));
+    for (var i = 0; i < target; i++) {
+      var spot = candidates[i];
+      // isValidCitySite was evaluated before this loop, so re-check against
+      // camps placed earlier in this same loop (their distance now matters
+      // too) before committing this one.
+      if (!isValidCitySite(spot[0], spot[1])) continue;
+      var camp = foundCity(natives, spot[0], spot[1], true);
+      var garrisonSize = 1 + (Math.random() < 0.5 ? 1 : 0);
+      for (var g = 0; g < garrisonSize; g++) {
+        var spawn = findSpawnTile(spot[0], spot[1], "land");
+        if (!spawn) break;
+        var pick = NATIVE_GARRISON_POOL[Math.floor(Math.random() * NATIVE_GARRISON_POOL.length)];
+        var garrisonUnit = newUnit(pick, "natives", spawn[0], spawn[1]);
+        // Ties this unit back to its camp, so negotiating peace or a war
+        // plan with the camp (see negotiateCamp) covers its garrison too.
+        garrisonUnit.campId = camp.id;
+        garrisonUnit.atWar = false;
+        natives.units.push(garrisonUnit);
+      }
+    }
+  }
+
+  // ---------- NATIVE DIPLOMACY ----------
+  // A Scout standing next to a still-unmet camp can ask for peace (free —
+  // the camp and its garrison stop being valid targets for the player) or
+  // propose a war plan against the AI (costs one weak unit as tribute, but
+  // the camp's garrison then actively fights the AI for you).
+  var TRIBUTE_ELIGIBLE = ["lightInfantry", "antiArmorInfantry"]; // "an infantry unit or something weak" — never a ship
+
+  function campById(id) {
+    for (var i = 0; i < state.natives.bases.length; i++) {
+      if (state.natives.bases[i].id === id) return state.natives.bases[i];
+    }
+    return null;
+  }
+  function isAtPeaceWithPlayer(campId) {
+    var c = campById(campId);
+    return !!c && !!c.pact;
+  }
+  // The living native camp (if any) adjacent to a unit's own tile.
+  function adjacentNativeCamp(u) {
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var i = 0; i < dirs.length; i++) {
+      var b = baseAt(u.x + dirs[i][0], u.y + dirs[i][1]);
+      if (b && b.id === "natives" && b.base.alive) return b.base;
+    }
+    return null;
+  }
+  function findTributeUnit(f) {
+    for (var i = 0; i < f.units.length; i++) {
+      if (TRIBUTE_ELIGIBLE.indexOf(f.units[i].typeId) !== -1) return f.units[i];
+    }
+    return null;
+  }
+  function campGarrison(camp) {
+    return state.natives.units.filter(function (u) { return u.campId === camp.id; });
+  }
+  function askForPeace(scoutUnit, camp) {
+    if (camp.pact) return;
+    camp.pact = "peace";
+    addLog("You make peace with the natives' " + cityLabel(state.natives, camp) + ".");
+    scoutUnit.acted = true;
+    state.selectedUnitId = null;
+  }
+  function proposeWarPlan(scoutUnit, camp) {
+    if (camp.pact === "war") return;
+    var tribute = findTributeUnit(state.player);
+    if (!tribute) {
+      addLog("No weak unit (Infantry) available to offer as tribute.");
+      return;
+    }
+    removeUnit(tribute);
+    camp.pact = "war";
+    campGarrison(camp).forEach(function (u) { u.atWar = true; });
+    addLog("You strike a war plan with the natives' " + cityLabel(state.natives, camp) + " against the AI, handing over a " + UNIT_TYPES[tribute.typeId].name + " as tribute.");
+    scoutUnit.acted = true;
+    state.selectedUnitId = null;
+  }
+
+  function nearestAiTarget(u) {
+    var candidates = state.ai.units.map(function (e) { return [e.x, e.y]; });
+    state.ai.bases.forEach(function (b) { if (b.alive) candidates.push([b.x, b.y]); });
+    var best = null, bestD = Infinity;
+    candidates.forEach(function (c) {
+      var d = Math.abs(c[0] - u.x) + Math.abs(c[1] - u.y);
+      if (d < bestD) { bestD = d; best = c; }
+    });
+    return best;
+  }
+
+  // Only a war-pact camp's garrison ever acts on its own, and only ever
+  // against the AI — peace-only and un-negotiated natives stay fully
+  // passive, as before.
+  function runNativesTurn() {
+    state.natives.units.forEach(function (u) { u.acted = false; });
+    state.natives.units.slice().forEach(function (u) {
+      if (u.hp <= 0 || !u.atWar) return;
+      var reachable = reachableTiles(u);
+      var attackable = attackableTiles(u, reachable).filter(function (t) {
+        var eu = unitAt(t[0], t[1]);
+        var eb = baseAt(t[0], t[1]);
+        return (eu && eu.owner === "ai") || (eb && eb.id === "ai");
+      });
+      if (attackable.length) {
+        var t = pickWeakestTarget(attackable);
+        resolveUnitAttack(u, t[0], t[1]);
+        return;
+      }
+      var target = nearestAiTarget(u);
+      if (target) moveToward(u, target[0], target[1]);
+      u.acted = true;
+    });
+  }
+
+  // { base: flat rate, harvest: bonus from a harvester on a goods tile,
+  //   cities: +1 per city beyond the capital, buildings: sum of built
+  //   production buildings, total: what gets added each turn }
+  function productionBreakdown(f) {
+    var base = 2;
+    var harvest = f.units.some(function (u) { return u.typeId === "harvester" && isResourceTile(u.x, u.y); }) ? 2 : 0;
+    var cities = Math.max(0, f.bases.filter(function (b) { return b.alive; }).length - 1);
+    var buildings = f.buildings.reduce(function (sum, id) { return sum + BUILDING_TYPES[id].prodBonus; }, 0);
+    return { base: base, harvest: harvest, cities: cities, buildings: buildings, total: base + harvest + cities + buildings };
+  }
+
+  function queueItemType(item) { return item.kind === "building" ? BUILDING_TYPES[item.id] : UNIT_TYPES[item.id]; }
+
+  function newUnit(typeId, owner, x, y) {
+    return { id: "u" + (state.nextUnitId++), typeId: typeId, owner: owner, x: x, y: y, hp: UNIT_TYPES[typeId].hp, acted: false, cargo: [] };
+  }
+
+  // BFS out from (cx,cy) over the 4-neighborhood, collecting up to `count`
+  // tiles matching predicate, nearest first. Used to seat starting units
+  // around a freshly founded capital without hardcoding offsets that might
+  // land in water or off a small island.
+  function bfsFindTiles(cx, cy, predicate, count) {
+    var visited = {}; visited[key(cx, cy)] = true;
+    var queue = [[cx, cy]];
+    var found = [];
+    var qi = 0;
+    while (qi < queue.length && found.length < count) {
+      var cur = queue[qi++];
+      var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      for (var i = 0; i < dirs.length; i++) {
+        var nx = cur[0] + dirs[i][0], ny = cur[1] + dirs[i][1];
+        if (!inBoundsRaw(nx, ny)) continue;
+        var k = key(nx, ny);
+        if (visited[k]) continue;
+        visited[k] = true;
+        if (predicate(nx, ny)) found.push([nx, ny]);
+        queue.push([nx, ny]);
+      }
+    }
+    return found;
+  }
+
+  function placeStartingUnits(f, cap) {
+    var landSpots = bfsFindTiles(cap[0], cap[1], function (x, y) {
+      return terrainAt(x, y) !== "water" && !unitAt(x, y) && !baseAt(x, y);
+    }, 3);
+    var kinds = ["harvester", "scout", f.isAI ? "aiSettler" : "settler"];
+    for (var i = 0; i < kinds.length && i < landSpots.length; i++) {
+      f.units.push(newUnit(kinds[i], f.id, landSpots[i][0], landSpots[i][1]));
+    }
+    var waterSpots = bfsFindTiles(cap[0], cap[1], function (x, y) {
+      return terrainAt(x, y) === "water" && !unitAt(x, y);
+    }, 1);
+    if (waterSpots.length) f.units.push(newUnit("frigate", f.id, waterSpots[0][0], waterSpots[0][1]));
+  }
+
+  function newGame(difficulty) {
+    var map = generateMap();
+    TERRAIN_GRID = map.terrain;
+    RESOURCE_GRID = map.resource;
+    RESOURCE_LIST = map.resourceList;
+    ISLAND_GRID = map.islandGrid;
+
+    state = {
+      turn: 1, nextUnitId: 1, nextCityId: 1, over: false, winner: null, hofRecorded: false,
+      difficulty: difficulty || (state && state.difficulty) || "medium",
+      selectedUnitId: null, selectedBaseId: null, log: []
+    };
+    state.player = makeFaction("player", false);
+    state.ai = makeFaction("ai", true);
+    state.natives = makeNativesFaction();
+
+    var explored = [];
+    for (var y = 0; y < ROWS; y++) explored.push(new Array(COLS).fill(false));
+    state.player.explored = explored;
+
+    foundCity(state.player, map.playerCapital[0], map.playerCapital[1]);
+    foundCity(state.ai, map.aiCapital[0], map.aiCapital[1]);
+
+    placeStartingUnits(state.player, map.playerCapital);
+    placeStartingUnits(state.ai, map.aiCapital);
+
+    // Camps go last, once the capitals (and the distance they keep other
+    // sites away from) are settled.
+    placeNativeCamps(state.natives);
+
+    updateFogOfWar();
+
+    setBoardCssVars();
+
+    addLog("Turn 1 begins.");
+    render();
+  }
+
+  // Unexplored tiles render as fog until something friendly comes within
+  // sight. Reveal is permanent (no re-hiding) — a light-touch fog model,
+  // not a full "currently visible vs. previously seen" system.
+  function revealAround(cx, cy, r) {
+    for (var dy = -r; dy <= r; dy++) {
+      for (var dx = -r; dx <= r; dx++) {
+        var x = cx + dx, y = cy + dy;
+        if (inBoundsRaw(x, y)) state.player.explored[y][x] = true;
+      }
+    }
+  }
+  function updateFogOfWar() {
+    state.player.units.forEach(function (u) {
+      revealAround(u.x, u.y, u.typeId === "scout" ? 3 : 1);
+    });
+    state.player.bases.forEach(function (b) {
+      if (b.alive) revealAround(b.x, b.y, 2);
+    });
+  }
+
+  function addLog(text, isWin) {
+    state.log.unshift({ text: text, win: !!isWin });
+    if (state.log.length > 40) state.log.pop();
+  }
+
+  // The natives are a third, non-playable faction (see factionOf) — they
+  // never take a faction id of "player" or "ai" themselves, so anything
+  // keyed strictly off those two ids (enemyOf, the AI's build queue, etc.)
+  // correctly never targets or acts as them.
+  function factionOf(id) { return id === "player" ? state.player : (id === "ai" ? state.ai : state.natives); }
+  function enemyOf(id) { return id === "player" ? state.ai : state.player; }
+
+  function unitAt(x, y) {
+    var all = state.player.units.concat(state.ai.units).concat(state.natives.units);
+    for (var i = 0; i < all.length; i++) if (all[i].x === x && all[i].y === y && all[i].hp > 0) return all[i];
+    return null;
+  }
+  function baseAt(x, y) {
+    var i;
+    for (i = 0; i < state.player.bases.length; i++) {
+      var pb = state.player.bases[i];
+      if (pb.alive && pb.x === x && pb.y === y) return { id: "player", base: pb, faction: state.player };
+    }
+    for (i = 0; i < state.ai.bases.length; i++) {
+      var ab = state.ai.bases[i];
+      if (ab.alive && ab.x === x && ab.y === y) return { id: "ai", base: ab, faction: state.ai };
+    }
+    for (i = 0; i < state.natives.bases.length; i++) {
+      var nb = state.natives.bases[i];
+      if (nb.alive && nb.x === x && nb.y === y) return { id: "natives", base: nb, faction: state.natives };
+    }
+    return null;
+  }
+
+  // Dijkstra over the movement budget: 4-directional, cost per tile from
+  // terrain (blocked outright if the unit's domain can't cross it), blocked
+  // by any unit or base. Small grid, so a plain "scan the frontier" relax
+  // loop is plenty fast — no priority queue needed.
+  function reachableTiles(unit) {
+    var unitType = UNIT_TYPES[unit.typeId];
+    var domain = unitType.domain || "land";
+    var movement = unitType.movement;
+    var dist = {}; dist[key(unit.x, unit.y)] = 0;
+    var frontier = [[unit.x, unit.y, 0]];
+    var result = [];
+    while (frontier.length) {
+      var next = [];
+      frontier.forEach(function (cur) {
+        var cx = cur[0], cy = cur[1], d = cur[2];
+        var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+        dirs.forEach(function (dir) {
+          var nx = cx + dir[0], ny = cy + dir[1];
+          if (!inBounds(nx, ny)) return;
+          var cost = moveCost(terrainAt(nx, ny), domain, unitType.category);
+          if (!isFinite(cost)) return;
+          var nd = d + cost;
+          if (nd > movement) return;
+          var k = key(nx, ny);
+          if (dist.hasOwnProperty(k) && dist[k] <= nd) return;
+          if (unitAt(nx, ny) || baseAt(nx, ny)) return;
+          dist[k] = nd;
+          next.push([nx, ny, nd]);
+        });
+      });
+      next.forEach(function (t) {
+        if (!result.some(function (r) { return r[0] === t[0] && r[1] === t[1]; })) result.push([t[0], t[1]]);
+      });
+      frontier = next;
+    }
+    return result;
+  }
+
+  function attackableTiles(unit, reachable) {
+    var type = UNIT_TYPES[unit.typeId];
+    if (!type.attack) return [];
+    var frontier = reachable.concat([[unit.x, unit.y]]);
+    var found = {};
+    var out = [];
+    frontier.forEach(function (t) {
+      var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      dirs.forEach(function (d) {
+        var nx = t[0] + d[0], ny = t[1] + d[1];
+        if (!inBounds(nx, ny)) return;
+        var k = key(nx, ny);
+        if (found[k]) return;
+        var eu = unitAt(nx, ny);
+        var eb = baseAt(nx, ny);
+        if (eu && eu.owner !== unit.owner) {
+          if (type.attackOnly && UNIT_TYPES[eu.typeId].category !== type.attackOnly) return;
+          // A camp the player has made peace (or a war pact) with, and its
+          // garrison, are off-limits to the player specifically — the AI
+          // can still fight them, and they can still fight the AI.
+          if (unit.owner === "player" && eu.owner === "natives" && isAtPeaceWithPlayer(eu.campId)) return;
+          found[k] = true; out.push([nx, ny]);
+        } else if (eb && eb.id !== unit.owner) {
+          if (type.attackOnly) return; // e.g. the Harvester can't run over a base
+          if (unit.owner === "player" && eb.id === "natives" && isAtPeaceWithPlayer(eb.base.id)) return;
+          found[k] = true; out.push([nx, ny]);
+        }
+      });
+    });
+    return out;
+  }
+
+  // Adjacent tiles holding a friendly ship (Frigate/Carrier/Battleship) with
+  // room left in its cargo hold. Only land-domain units board — ships are
+  // naval, so this only ever matters for units standing on land next to one.
+  function boardableTiles(unit, reachable) {
+    var type = UNIT_TYPES[unit.typeId];
+    if ((type.domain || "land") !== "land") return [];
+    var frontier = reachable.concat([[unit.x, unit.y]]);
+    var found = {};
+    var out = [];
+    frontier.forEach(function (t) {
+      var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      dirs.forEach(function (d) {
+        var nx = t[0] + d[0], ny = t[1] + d[1];
+        if (!inBounds(nx, ny)) return;
+        var k = key(nx, ny);
+        if (found[k]) return;
+        var eu = unitAt(nx, ny);
+        var euType = eu ? UNIT_TYPES[eu.typeId] : null;
+        if (eu && eu.owner === unit.owner && euType.capacity && cargoOccupied(eu) + cargoSlotCost(unit.typeId) <= euType.capacity) {
+          found[k] = true;
+          out.push([nx, ny]);
+        }
+      });
+    });
+    return out;
+  }
+
+  function boardFrigate(landUnit, frigate) {
+    var f = factionOf(landUnit.owner);
+    f.units = f.units.filter(function (x) { return x.id !== landUnit.id; });
+    landUnit.acted = true;
+    frigate.cargo.push(landUnit);
+    addLog(UNIT_TYPES[landUnit.typeId].name + " (" + landUnit.owner + ") boards the " + UNIT_TYPES.frigate.name + ".");
+    state.selectedUnitId = null;
+  }
+
+  // Finds an empty, non-water tile adjacent to the frigate to disembark onto.
+  function findDisembarkTile(frigate) {
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for (var i = 0; i < dirs.length; i++) {
+      var nx = frigate.x + dirs[i][0], ny = frigate.y + dirs[i][1];
+      if (!inBounds(nx, ny)) continue;
+      if (terrainAt(nx, ny) === "water") continue;
+      if (unitAt(nx, ny) || baseAt(nx, ny)) continue;
+      return [nx, ny];
+    }
+    return null;
+  }
+
+  function disembarkUnit(frigate, cargoIdx) {
+    var landUnit = frigate.cargo[cargoIdx];
+    if (!landUnit) return;
+    var spot = findDisembarkTile(frigate);
+    if (!spot) { addLog("No open ground to disembark onto."); return; }
+    frigate.cargo.splice(cargoIdx, 1);
+    landUnit.x = spot[0];
+    landUnit.y = spot[1];
+    landUnit.acted = true;
+    var f = factionOf(landUnit.owner);
+    f.units.push(landUnit);
+    addLog(UNIT_TYPES[landUnit.typeId].name + " (" + landUnit.owner + ") disembarks.");
+  }
+
+  // Shared by the combat-analysis modal (preview) and the actual resolve, so
+  // the numbers shown before confirming are exactly what happens after.
+  // A base target's own attack/defense/hp now live on the city object itself
+  // (set at founding — see makeCity) rather than a single shared BASE_STATS,
+  // since a native camp fights back much harder than an ordinary city.
+  function previewCombat(attackerUnit, targetX, targetY) {
+    var attType = UNIT_TYPES[attackerUnit.typeId];
+    var targetUnit = unitAt(targetX, targetY);
+    var targetBase = baseAt(targetX, targetY);
+    var defenderType = targetUnit ? UNIT_TYPES[targetUnit.typeId]
+      : (targetBase ? { name: targetBase.base.isCamp ? NATIVE_CAMP_STATS.name : BASE_STATS.name, attack: targetBase.base.attack, defense: targetBase.base.defense, hp: targetBase.base.maxHp, category: "base" } : BASE_STATS);
+    var defenderTerrain = terrainAt(targetX, targetY);
+    var attackerTerrain = terrainAt(attackerUnit.x, attackerUnit.y);
+    var dealt = computeDamage(attType, defenderType, defenseBonus(defenderTerrain));
+    var taken = defenderType.attack > 0 ? computeDamage(defenderType, attType, defenseBonus(attackerTerrain)) : 0;
+    return {
+      attType: attType, defenderType: defenderType, targetUnit: targetUnit, targetBase: targetBase,
+      defenderTerrain: defenderTerrain, attackerTerrain: attackerTerrain, dealt: dealt, taken: taken
+    };
+  }
+
+  function resolveUnitAttack(attackerUnit, targetX, targetY) {
+    var p = previewCombat(attackerUnit, targetX, targetY);
+    var attType = p.attType, defenderType = p.defenderType, dmg = p.dealt;
+
+    if (p.targetUnit) {
+      var targetUnit = p.targetUnit;
+      targetUnit.hp = Math.max(0, targetUnit.hp - dmg);
+      var verb = attType.id === "harvester" ? " runs over " : " hits ";
+      addLog(attType.name + " (" + attackerUnit.owner + ")" + verb + defenderType.name + " for " + dmg + ".");
+      if (targetUnit.hp === 0) {
+        addLog(defenderType.name + " (" + targetUnit.owner + ") destroyed.", false);
+        if (targetUnit.cargo && targetUnit.cargo.length) {
+          addLog(targetUnit.cargo.length + " unit(s) aboard were lost with the ship.", false);
+          targetUnit.cargo = [];
+        }
+        removeUnit(targetUnit);
+      } else if (defenderType.attack > 0) {
+        var back = p.taken;
+        attackerUnit.hp = Math.max(0, attackerUnit.hp - back);
+        addLog(defenderType.name + " returns " + back + ".");
+        if (attackerUnit.hp === 0) {
+          addLog(attType.name + " (" + attackerUnit.owner + ") destroyed.", false);
+          if (attackerUnit.cargo && attackerUnit.cargo.length) {
+            addLog(attackerUnit.cargo.length + " unit(s) aboard were lost with the ship.", false);
+            attackerUnit.cargo = [];
+          }
+          removeUnit(attackerUnit);
+        }
+      }
+    } else if (p.targetBase) {
+      var targetBase = p.targetBase;
+      var label = cityLabel(targetBase.faction, targetBase.base);
+      targetBase.base.hp = Math.max(0, targetBase.base.hp - dmg);
+      addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + " for " + dmg + " (" + targetBase.base.hp + "/" + targetBase.base.maxHp + ").");
+      if (targetBase.base.hp === 0) {
+        targetBase.base.alive = false;
+        addLog(possessiveLabel(targetBase.id) + " " + label + " destroyed.", false);
+        // Wiping out every native camp is not a win/loss condition — only
+        // the player's and the AI's own cities decide the game.
+        if (targetBase.id !== "natives" && targetBase.faction.bases.every(function (b) { return !b.alive; })) {
+          // A war-pact native landing the finishing blow counts as a player
+          // win — they're only out there fighting because you struck the
+          // pact, and "the natives win" isn't a state the result screen has.
+          endGame(attackerUnit.owner === "natives" ? "player" : attackerUnit.owner);
+        }
+      } else if (defenderType.attack > 0) {
+        // A camp (or, in principle, any base with an attack stat) fights
+        // back directly — mirrors the unit-vs-unit retaliation below.
+        var backB = p.taken;
+        attackerUnit.hp = Math.max(0, attackerUnit.hp - backB);
+        addLog(label + " fights back for " + backB + ".");
+        if (attackerUnit.hp === 0) {
+          addLog(attType.name + " (" + attackerUnit.owner + ") destroyed.", false);
+          if (attackerUnit.cargo && attackerUnit.cargo.length) {
+            addLog(attackerUnit.cargo.length + " unit(s) aboard were lost with the ship.", false);
+            attackerUnit.cargo = [];
+          }
+          removeUnit(attackerUnit);
+        }
+      }
+    }
+    attackerUnit.acted = true;
+  }
+
+  function removeUnit(u) {
+    var f = factionOf(u.owner);
+    f.units = f.units.filter(function (x) { return x.id !== u.id; });
+  }
+
+  function ownerLabel(id) { return id === "player" ? "Your" : (id === "natives" ? "Native" : "Enemy"); }
+  function possessiveLabel(id) { return id === "natives" ? "natives'" : id + "'s"; }
+
+  function endGame(winnerId) {
+    state.over = true;
+    state.winner = winnerId;
+    addLog((winnerId === "player" ? "You" : "The AI") + " win the reckoning.", true);
+  }
+
+  // ---------- ECONOMY / TURN TICK ----------
+  function factionAlive(f) { return f.bases.some(function (b) { return b.alive; }); }
+
+  function tickFaction(f) {
+    if (!factionAlive(f)) return;
+    var pb = productionBreakdown(f);
+    var mult = (f.id === "ai" && state.difficulty) ? (DIFFICULTY_AI_MULT[state.difficulty] || 1) : 1;
+    f.production += Math.round(pb.total * mult);
+    f.research += Math.round(1 * mult);
+
+    if (f.techIndex < TECHS.length) {
+      var t = TECHS[f.techIndex];
+      if (f.research >= t.cost) {
+        f.techIndex += 1;
+        t.unlocks.forEach(function (id) { if (f.unlocked.indexOf(id) === -1) f.unlocked.push(id); });
+        addLog((f.id === "player" ? "You" : "The AI") + " completed " + t.name + ".");
+      }
+    }
+
+    if (f.buildQueue.length) {
+      var qitem = f.buildQueue[0];
+      var qtype = queueItemType(qitem);
+      if (f.production >= qtype.cost) {
+        if (qitem.kind === "building") {
+          f.production -= qtype.cost;
+          if (f.buildings.indexOf(qitem.id) === -1) f.buildings.push(qitem.id);
+          if (qtype.grantsUnlocks) {
+            qtype.grantsUnlocks.forEach(function (id) { if (f.unlocked.indexOf(id) === -1) f.unlocked.push(id); });
+          }
+          addLog((f.id === "player" ? "You" : "The AI") + " completed the " + qtype.name + ".");
+          f.buildQueue.shift();
+        } else {
+          // Naval units need an adjacent water spawn tile, land units an
+          // adjacent land one — only deduct production and advance the
+          // queue once a valid spot is actually found, so a built unit is
+          // never silently lost (a real bug this fixes, not just new code).
+          var domain = qtype.domain || "land";
+          var spot = findSpawnTileForFaction(f, domain);
+          if (spot) {
+            f.production -= qtype.cost;
+            f.units.push(newUnit(qitem.id, f.id, spot[0], spot[1]));
+            addLog((f.id === "player" ? "You" : "The AI") + " built a " + qtype.name + ".");
+            f.buildQueue.shift();
+          }
+        }
+      }
+    }
+
+    f.units.forEach(function (u) { u.acted = false; });
+    return pb.total;
+  }
+
+  function findSpawnTile(bx, by, domain) {
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for (var i = 0; i < dirs.length; i++) {
+      var nx = bx + dirs[i][0], ny = by + dirs[i][1];
+      if (!inBounds(nx, ny) || unitAt(nx, ny) || baseAt(nx, ny)) continue;
+      var isWater = terrainAt(nx, ny) === "water";
+      if (domain === "naval" ? isWater : !isWater) return [nx, ny];
+    }
+    return null;
+  }
+
+  // Tries the capital first, then each later-founded city, for an open
+  // adjacent tile (matching the unit's domain) to spawn a newly built unit on.
+  function findSpawnTileForFaction(f, domain) {
+    for (var i = 0; i < f.bases.length; i++) {
+      if (!f.bases[i].alive) continue;
+      var spot = findSpawnTile(f.bases[i].x, f.bases[i].y, domain);
+      if (spot) return spot;
+    }
+    return null;
+  }
+
+  // ---------- AI ----------
+  // Every valid, empty city site on the map, nearest-first to (fx,fy).
+  function validCitySitesByDistance(fx, fy) {
+    var out = [];
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if (isValidCitySite(x, y) && !unitAt(x, y) && !baseAt(x, y)) out.push([x, y]);
+      }
+    }
+    out.sort(function (a, b) {
+      var da = Math.abs(a[0] - fx) + Math.abs(a[1] - fy);
+      var db = Math.abs(b[0] - fx) + Math.abs(b[1] - fy);
+      return da - db;
+    });
+    return out;
+  }
+  function nearestFriendlyShip(f, u) {
+    var best = null, bestD = Infinity;
+    f.units.forEach(function (s) {
+      if ((UNIT_TYPES[s.typeId].domain || "land") !== "naval") return;
+      var d = Math.abs(s.x - u.x) + Math.abs(s.y - u.y);
+      if (d < bestD) { bestD = d; best = s; }
+    });
+    return best;
+  }
+
+  function runAiTurn() {
+    var f = state.ai;
+    if (!factionAlive(f)) return;
+
+    if (!f.buildQueue.length) {
+      var aliveSettlers = f.units.filter(function (u) { return UNIT_TYPES[u.typeId].canFoundCity; }).length;
+      var availableBuildings = BUILDING_ORDER.filter(function (id) {
+        return f.buildings.indexOf(id) === -1 && (id !== "shipyard" || factionHasCoastalCity(f));
+      });
+      if (availableBuildings.length && Math.random() < 0.3) {
+        f.buildQueue.push({ kind: "building", id: availableBuildings[0] });
+      } else if (aliveSettlers < 2 && Math.random() < 0.25) {
+        f.buildQueue.push({ kind: "unit", id: "aiSettler" });
+      } else {
+        var pool = f.unlocked.filter(function (id) {
+          return id !== "harvester" && id !== "scout" && id !== "aiSettler" && id !== "settler";
+        });
+        var pick = pool[Math.floor(Math.random() * pool.length)] || "lightInfantry";
+        f.buildQueue.push({ kind: "unit", id: pick });
+      }
+    }
+
+    f.units.slice().forEach(function (u) {
+      if (u.hp <= 0 || u.acted) return;
+      var type = UNIT_TYPES[u.typeId];
+
+      if (u.typeId === "harvester") {
+        if (isResourceTile(u.x, u.y)) { u.acted = true; return; }
+        var target = nearestResourceTile(u);
+        if (target) moveToward(u, target[0], target[1]);
+        u.acted = true;
+        return;
+      }
+
+      // Settlers found cities on their own island; if the island is full,
+      // they head for the coast to hitch a ride on a friendly ship instead.
+      if (type.canFoundCity) {
+        if (isValidCitySite(u.x, u.y)) { foundCityAction(u); return; }
+        var homeIsland = islandIdAt(u.x, u.y);
+        var sites = validCitySitesByDistance(u.x, u.y);
+        var sameIslandSite = null;
+        for (var i = 0; i < sites.length; i++) {
+          if (islandIdAt(sites[i][0], sites[i][1]) === homeIsland) { sameIslandSite = sites[i]; break; }
+        }
+        if (sameIslandSite) { moveToward(u, sameIslandSite[0], sameIslandSite[1]); u.acted = true; return; }
+        var reachable = reachableTiles(u);
+        var boardable = boardableTiles(u, reachable);
+        if (boardable.length) { boardFrigate(u, unitAt(boardable[0][0], boardable[0][1])); return; }
+        var ship = nearestFriendlyShip(f, u);
+        if (ship) moveToward(u, ship.x, ship.y);
+        u.acted = true;
+        return;
+      }
+
+      // A ship ferrying a Settler sails toward a valid site on a different
+      // island and drops it off as soon as it's alongside open land there.
+      if ((type.domain || "land") === "naval" && u.cargo.length) {
+        var cargoSettlerIdx = -1;
+        for (var ci = 0; ci < u.cargo.length; ci++) {
+          if (UNIT_TYPES[u.cargo[ci].typeId].canFoundCity) { cargoSettlerIdx = ci; break; }
+        }
+        if (cargoSettlerIdx !== -1) {
+          var homeIslandForShip = islandIdAt(f.bases[0].x, f.bases[0].y);
+          var farSites = validCitySitesByDistance(u.x, u.y).filter(function (s) {
+            return islandIdAt(s[0], s[1]) !== homeIslandForShip;
+          });
+          if (farSites.length) moveToward(u, farSites[0][0], farSites[0][1]);
+          var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+          for (var di = 0; di < dirs.length; di++) {
+            var nx = u.x + dirs[di][0], ny = u.y + dirs[di][1];
+            if (isValidCitySite(nx, ny) && !unitAt(nx, ny) && !baseAt(nx, ny)) {
+              disembarkUnit(u, cargoSettlerIdx);
+              break;
+            }
+          }
+          u.acted = true;
+          return;
+        }
+      }
+
+      var reachable = reachableTiles(u);
+      var attackable = attackableTiles(u, reachable);
+      if (attackable.length) {
+        var t = pickWeakestTarget(attackable);
+        resolveUnitAttack(u, t[0], t[1]);
+        return;
+      }
+
+      if (type.attack > 0) {
+        var enemyTarget = nearestEnemy(u);
+        if (enemyTarget) moveToward(u, enemyTarget[0], enemyTarget[1]);
+      }
+      u.acted = true;
+    });
+  }
+
+  function pickWeakestTarget(tiles) {
+    var best = tiles[0], bestHp = Infinity;
+    tiles.forEach(function (t) {
+      var eu = unitAt(t[0], t[1]);
+      var hp = eu ? eu.hp : (baseAt(t[0], t[1]) ? baseAt(t[0], t[1]).base.hp : Infinity);
+      if (hp < bestHp) { bestHp = hp; best = t; }
+    });
+    return best;
+  }
+
+  function nearestResourceTile(u) {
+    var best = null, bestD = Infinity;
+    RESOURCE_LIST.forEach(function (r) {
+      var d = Math.abs(r[0] - u.x) + Math.abs(r[1] - u.y);
+      if (d < bestD) { bestD = d; best = r; }
+    });
+    return best;
+  }
+
+  function nearestEnemy(u) {
+    var enemy = enemyOf(u.owner);
+    var candidates = enemy.units.map(function (e) { return [e.x, e.y]; });
+    enemy.bases.forEach(function (b) { if (b.alive) candidates.push([b.x, b.y]); });
+    var best = null, bestD = Infinity;
+    candidates.forEach(function (c) {
+      var d = Math.abs(c[0] - u.x) + Math.abs(c[1] - u.y);
+      if (d < bestD) { bestD = d; best = c; }
+    });
+    return best;
+  }
+
+  function moveToward(u, tx, ty) {
+    var reachable = reachableTiles(u);
+    if (!reachable.length) return;
+    var best = null, bestD = Infinity;
+    reachable.forEach(function (t) {
+      var d = Math.abs(t[0] - tx) + Math.abs(t[1] - ty);
+      if (d < bestD) { bestD = d; best = t; }
+    });
+    var curD = Math.abs(u.x - tx) + Math.abs(u.y - ty);
+    if (best && bestD < curD) { u.x = best[0]; u.y = best[1]; }
+  }
+
+  // ---------- RENDER ----------
+  var el = {
+    board: document.getElementById("board"),
+    hudTurn: document.getElementById("hudTurn"),
+    hudPlayerProd: document.getElementById("hudPlayerProd"),
+    hudPlayerCities: document.getElementById("hudPlayerCities"),
+    hudAiProd: document.getElementById("hudAiProd"),
+    selectionBody: document.getElementById("selectionBody"),
+    buildSelect: document.getElementById("buildSelect"),
+    queueHint: document.getElementById("queueHint"),
+    techList: document.getElementById("techList"),
+    logList: document.getElementById("logList"),
+    endTurnBtn: document.getElementById("endTurnBtn"),
+    resultOverlay: document.getElementById("resultOverlay"),
+    resultTitle: document.getElementById("resultTitle"),
+    resultBody: document.getElementById("resultBody"),
+    restartBtn: document.getElementById("restartBtn"),
+    combatOverlay: document.getElementById("combatOverlay"),
+    combatAttackerBadge: document.getElementById("combatAttackerBadge"),
+    combatAttackerName: document.getElementById("combatAttackerName"),
+    combatAttackerStats: document.getElementById("combatAttackerStats"),
+    combatAttackerTerrain: document.getElementById("combatAttackerTerrain"),
+    combatDefenderBadge: document.getElementById("combatDefenderBadge"),
+    combatDefenderName: document.getElementById("combatDefenderName"),
+    combatDefenderStats: document.getElementById("combatDefenderStats"),
+    combatDefenderTerrain: document.getElementById("combatDefenderTerrain"),
+    combatDealt: document.getElementById("combatDealt"),
+    combatTaken: document.getElementById("combatTaken"),
+    combatConfirmBtn: document.getElementById("combatConfirmBtn"),
+    combatCancelBtn: document.getElementById("combatCancelBtn"),
+    cityOverlay: document.getElementById("cityOverlay"),
+    cityTitle: document.getElementById("cityTitle"),
+    cityBaseVal: document.getElementById("cityBaseVal"),
+    cityHarvestVal: document.getElementById("cityHarvestVal"),
+    cityCitiesVal: document.getElementById("cityCitiesVal"),
+    cityBuildingVal: document.getElementById("cityBuildingVal"),
+    cityTotalVal: document.getElementById("cityTotalVal"),
+    cityBuildingsList: document.getElementById("cityBuildingsList"),
+    cityQueueList: document.getElementById("cityQueueList"),
+    cityGarrisonList: document.getElementById("cityGarrisonList"),
+    cityCloseBtn: document.getElementById("cityCloseBtn"),
+    gameScreen: document.getElementById("gameScreen"),
+    saveIconBtn: document.getElementById("saveIconBtn"),
+    menuIconBtn: document.getElementById("menuIconBtn"),
+    resultMenuBtn: document.getElementById("resultMenuBtn"),
+    homeOverlay: document.getElementById("homeOverlay"),
+    homePlayBtn: document.getElementById("homePlayBtn"),
+    homeLoadBtn: document.getElementById("homeLoadBtn"),
+    homeHowToBtn: document.getElementById("homeHowToBtn"),
+    homeHofBtn: document.getElementById("homeHofBtn"),
+    difficultyOverlay: document.getElementById("difficultyOverlay"),
+    diffBabyBtn: document.getElementById("diffBabyBtn"),
+    diffMediumBtn: document.getElementById("diffMediumBtn"),
+    diffHardBtn: document.getElementById("diffHardBtn"),
+    diffBackBtn: document.getElementById("diffBackBtn"),
+    loadOverlay: document.getElementById("loadOverlay"),
+    loadSlotList: document.getElementById("loadSlotList"),
+    loadBackBtn: document.getElementById("loadBackBtn"),
+    saveOverlay: document.getElementById("saveOverlay"),
+    saveSlotList: document.getElementById("saveSlotList"),
+    saveBackBtn: document.getElementById("saveBackBtn"),
+    howToPlayOverlay: document.getElementById("howToPlayOverlay"),
+    howToBackBtn: document.getElementById("howToBackBtn"),
+    hallOfFameOverlay: document.getElementById("hallOfFameOverlay"),
+    hofList: document.getElementById("hofList"),
+    hofBackBtn: document.getElementById("hofBackBtn")
+  };
+  var pendingAttack = null;
+
+  // ---------- MENU / HOME SCREEN NAVIGATION ----------
+  function hideAllMenus() {
+    el.homeOverlay.hidden = true;
+    el.difficultyOverlay.hidden = true;
+    el.loadOverlay.hidden = true;
+    el.saveOverlay.hidden = true;
+    el.howToPlayOverlay.hidden = true;
+    el.hallOfFameOverlay.hidden = true;
+  }
+  function showHome() {
+    el.gameScreen.hidden = true;
+    document.body.classList.remove("playing");
+    hideAllMenus();
+    el.homeOverlay.hidden = false;
+  }
+  function showDifficulty() {
+    hideAllMenus();
+    el.difficultyOverlay.hidden = false;
+  }
+  function showHowToPlay() {
+    hideAllMenus();
+    el.howToPlayOverlay.hidden = false;
+  }
+  function showHallOfFame() {
+    hideAllMenus();
+    renderHallOfFameList();
+    el.hallOfFameOverlay.hidden = false;
+  }
+  function showLoadGame() {
+    hideAllMenus();
+    renderSlotList(el.loadSlotList, "load");
+    el.loadOverlay.hidden = false;
+  }
+  function showSaveGame() {
+    hideAllMenus();
+    renderSlotList(el.saveSlotList, "save");
+    el.saveOverlay.hidden = false;
+  }
+  function beginPlay() {
+    setBoardCssVars();
+    hideAllMenus();
+    el.gameScreen.hidden = false;
+    document.body.classList.add("playing");
+    render();
+  }
+  function startNewGame(difficulty) {
+    newGame(difficulty);
+    beginPlay();
+  }
+
+  function slotSummaryText(slot) {
+    return "Turn " + slot.turn + " · " + (DIFFICULTY_LABEL[slot.difficulty] || slot.difficulty) +
+      " · " + slot.cities + (slot.cities === 1 ? " city" : " cities") + " · " + formatSavedAt(slot.savedAt);
+  }
+  function renderSlotList(container, mode) {
+    var slots = loadSaveSlots();
+    container.innerHTML = "";
+    slots.forEach(function (slot, i) {
+      var row = document.createElement("div");
+      var main = document.createElement("button");
+      main.type = "button";
+      main.className = "slot-main";
+
+      if (slot) {
+        row.className = "slot-item";
+        main.innerHTML = '<span class="slot-name">Slot ' + (i + 1) + '</span><span class="slot-meta">' + slotSummaryText(slot) + '</span>';
+        main.addEventListener("click", function () {
+          if (mode === "load") {
+            if (loadGameFromSlot(i)) beginPlay();
+          } else {
+            saveGameToSlot(i);
+            addLog("Game saved to Slot " + (i + 1) + ".");
+            hideAllMenus();
+            el.gameScreen.hidden = false;
+            render();
+          }
+        });
+        row.appendChild(main);
+
+        var del = document.createElement("button");
+        del.type = "button";
+        del.className = "slot-delete-btn";
+        del.title = "Delete this save";
+        del.setAttribute("aria-label", "Delete Slot " + (i + 1));
+        del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2zM9 9v9h1V9H9zm5 0v9h1V9h-1z"/></svg>';
+        del.addEventListener("click", function () {
+          deleteSaveSlot(i);
+          renderSlotList(container, mode);
+        });
+        row.appendChild(del);
+      } else {
+        row.className = "slot-item empty" + (mode === "load" ? " loadable" : "");
+        main.innerHTML = '<span class="slot-name">Slot ' + (i + 1) + '</span><span class="slot-meta">Empty Slot</span>';
+        if (mode === "save") {
+          main.addEventListener("click", function () {
+            saveGameToSlot(i);
+            addLog("Game saved to Slot " + (i + 1) + ".");
+            hideAllMenus();
+            el.gameScreen.hidden = false;
+            render();
+          });
+        } else {
+          main.disabled = true;
+        }
+        row.appendChild(main);
+      }
+      container.appendChild(row);
+    });
+  }
+  function renderHallOfFameList() {
+    var games = loadHallOfFame();
+    if (!games.length) {
+      el.hofList.innerHTML = '<div class="hof-empty">No games recorded yet — finish a skirmish to add one.</div>';
+      return;
+    }
+    el.hofList.innerHTML = games.map(function (g) {
+      return '<div class="hof-item ' + (g.result === "win" ? "win" : "loss") + '">' +
+        '<span class="hof-result">' + (g.result === "win" ? "Victory" : "Defeat") + '</span>' +
+        '<span class="hof-meta">Turn ' + g.turn + ' · ' + (DIFFICULTY_LABEL[g.difficulty] || g.difficulty) + ' · ' + formatSavedAt(g.date) + '</span>' +
+        '</div>';
+    }).join("");
+  }
+
+  function openCombatAnalysis(attackerUnit, tx, ty) {
+    var p = previewCombat(attackerUnit, tx, ty);
+    pendingAttack = { unitId: attackerUnit.id, x: tx, y: ty };
+
+    el.combatAttackerBadge.innerHTML = '<svg><use href="#icon-' + iconIdFor(p.attType) + '"></use></svg>';
+    el.combatAttackerName.textContent = p.attType.name;
+    el.combatAttackerStats.textContent = "ATK " + p.attType.attack + " / DEF " + p.attType.defense;
+    el.combatAttackerTerrain.textContent = defenseBonus(p.attackerTerrain) ? terrainLabel(p.attackerTerrain) + " +" + defenseBonus(p.attackerTerrain) + " def" : "";
+
+    var defenderIconId = p.targetBase ? "base" : iconIdFor(p.defenderType);
+    el.combatDefenderBadge.innerHTML = '<svg><use href="#icon-' + defenderIconId + '"></use></svg>';
+    el.combatDefenderName.textContent = p.targetBase ? (p.targetBase.id === "natives" ? "Native Camp" : "Enemy Base") : p.defenderType.name;
+    el.combatDefenderStats.textContent = "ATK " + p.defenderType.attack + " / DEF " + p.defenderType.defense;
+    el.combatDefenderTerrain.textContent = defenseBonus(p.defenderTerrain) ? terrainLabel(p.defenderTerrain) + " +" + defenseBonus(p.defenderTerrain) + " def" : "";
+
+    el.combatDealt.textContent = p.dealt;
+    el.combatTaken.textContent = p.taken;
+    el.combatOverlay.hidden = false;
+  }
+
+  function closeCombatAnalysis() {
+    pendingAttack = null;
+    el.combatOverlay.hidden = true;
+  }
+
+  // Friendly units standing on the four tiles around the base — its garrison.
+  function garrisonUnits(f, cityObj) {
+    var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    var out = [];
+    dirs.forEach(function (d) {
+      var u = unitAt(cityObj.x + d[0], cityObj.y + d[1]);
+      if (u && u.owner === f.id) out.push(u);
+    });
+    return out;
+  }
+
+  function openCityView() {
+    el.cityOverlay.hidden = false;
+    renderCityView();
+  }
+  function closeCityView() {
+    el.cityOverlay.hidden = true;
+  }
+
+  function renderCityView() {
+    var f = state.player;
+    var cityObj = findCityById(f, state.selectedBaseId) || f.bases[0];
+    el.cityTitle.textContent = "Inside " + cityLabel(f, cityObj);
+    var pb = productionBreakdown(f);
+    el.cityBaseVal.textContent = "+" + pb.base;
+    el.cityHarvestVal.textContent = "+" + pb.harvest;
+    el.cityCitiesVal.textContent = "+" + pb.cities;
+    el.cityBuildingVal.textContent = "+" + pb.buildings;
+    el.cityTotalVal.textContent = pb.total;
+
+    el.cityBuildingsList.innerHTML = f.buildings.length
+      ? f.buildings.map(function (id) {
+          var t = BUILDING_TYPES[id];
+          return '<div class="city-item"><div class="badge-mini"><svg><use href="#icon-' + id + '"></use></svg></div>' +
+            '<div style="flex:1"><div>' + t.name + '</div><div class="desc">' + t.desc + '</div></div></div>';
+        }).join("")
+      : '<div class="empty">No buildings yet — queue one below.</div>';
+
+    el.cityQueueList.innerHTML = f.buildQueue.length
+      ? f.buildQueue.map(function (item, i) {
+          var t = queueItemType(item);
+          var iconId = item.kind === "building" ? item.id : item.id;
+          var row = '<div class="city-item"><div class="badge-mini"><svg><use href="#icon-' + iconId + '"></use></svg></div>' +
+            '<div style="flex:1"><div>' + t.name + (item.kind === "building" ? " (building)" : "") + '</div>';
+          if (i === 0) {
+            var pct = Math.min(100, (f.production / t.cost) * 100);
+            row += '<div class="desc">' + f.production + ' / ' + t.cost + ' pts</div><div class="city-progress"><div class="city-progress-fill" style="width:' + pct + '%"></div></div>';
+          } else {
+            row += '<div class="desc">queued</div>';
+          }
+          return row + '</div></div>';
+        }).join("")
+      : '<div class="empty">Idle — nothing queued.</div>';
+
+    var garrison = garrisonUnits(f, cityObj);
+    el.cityGarrisonList.innerHTML = garrison.length
+      ? garrison.map(function (u) {
+          var t = UNIT_TYPES[u.typeId];
+          return '<div class="city-item"><div class="badge-mini"><svg><use href="#icon-' + iconIdFor(t) + '"></use></svg></div>' +
+            '<div style="flex:1"><div>' + t.name + '</div><div class="desc">' + u.hp + ' / ' + t.hp + ' hp</div></div></div>';
+        }).join("")
+      : '<div class="empty">No units stationed at the base.</div>';
+  }
+
+  function selectedUnit() {
+    if (!state.selectedUnitId) return null;
+    var all = state.player.units;
+    for (var i = 0; i < all.length; i++) if (all[i].id === state.selectedUnitId) return all[i];
+    return null;
+  }
+
+  function render() {
+    renderBoard();
+    renderHud();
+    renderSelection();
+    renderBuildPanel();
+    renderTech();
+    renderLog();
+    el.endTurnBtn.disabled = state.over;
+    if (state.over) {
+      el.resultOverlay.hidden = false;
+      el.resultTitle.textContent = state.winner === "player" ? "Victory" : "Defeat";
+      el.resultBody.textContent = state.winner === "player" ? "Every enemy city has been destroyed." : "All of your cities have fallen.";
+      if (!state.hofRecorded) {
+        recordHallOfFame(state.winner === "player" ? "win" : "loss");
+        state.hofRecorded = true;
+      }
+    } else {
+      el.resultOverlay.hidden = true;
+    }
+    if (!el.cityOverlay.hidden) renderCityView();
+  }
+
+  function renderBoard() {
+    updateFogOfWar();
+    el.board.innerHTML = "";
+    var su = selectedUnit();
+    var reachable = su ? reachableTiles(su) : [];
+    var attackable = su ? attackableTiles(su, reachable) : [];
+    var boardable = su ? boardableTiles(su, reachable) : [];
+    var reachSet = {}; reachable.forEach(function (t) { reachSet[key(t[0], t[1])] = true; });
+    var atkSet = {}; attackable.forEach(function (t) { atkSet[key(t[0], t[1])] = true; });
+    var boardSet = {}; boardable.forEach(function (t) { boardSet[key(t[0], t[1])] = true; });
+
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        var tile = document.createElement("div");
+        var isExplored = state.player.explored[y][x];
+        var isRes = isExplored && isResourceTile(x, y);
+        var terrain = terrainAt(x, y);
+        var k = key(x, y);
+
+        if (!isExplored) {
+          tile.className = "tile unexplored";
+          tile.title = "Unexplored";
+        } else {
+          tile.className = "tile" + (terrain !== "plain" ? " " + terrain : "") + (isRes ? " resource" : "");
+          tile.title = terrainLabel(terrain) + (isRes ? " (goods)" : "");
+        }
+        if (su && su.x === x && su.y === y) tile.classList.add("selected");
+        if (reachSet[k]) tile.classList.add("reachable");
+        if (atkSet[k]) tile.classList.add("attackable");
+        if (boardSet[k]) tile.classList.add("boardable");
+
+        if (isExplored) {
+          var b = baseAt(x, y);
+          var u = unitAt(x, y);
+          if (b) {
+            var bt = document.createElement("div");
+            bt.className = "base-token " + b.id;
+            bt.title = ownerLabel(b.id) + (b.id === "natives" ? " Camp" + (b.base.pact ? " (" + b.base.pact + ")" : "") : " Base");
+            bt.innerHTML = '<svg><use href="#icon-base"></use></svg>';
+            tile.appendChild(bt);
+            var pip = document.createElement("div");
+            pip.className = "hp-pip";
+            var fill = document.createElement("div");
+            fill.className = "hp-pip-fill";
+            fill.style.width = Math.max(0, (b.base.hp / b.base.maxHp) * 100) + "%";
+            pip.appendChild(fill);
+            tile.appendChild(pip);
+          } else if (u) {
+            var type = UNIT_TYPES[u.typeId];
+            var tok = document.createElement("div");
+            tok.className = "token " + u.owner + (u.acted ? " acted" : "");
+            tok.title = ownerLabel(u.owner) + " " + type.name + (u.owner === "natives" && u.atWar ? " (war ally)" : "");
+            tok.innerHTML = '<svg><use href="#icon-' + iconIdFor(type) + '"></use></svg>';
+            tile.appendChild(tok);
+            var pip2 = document.createElement("div");
+            pip2.className = "hp-pip";
+            var fill2 = document.createElement("div");
+            fill2.className = "hp-pip-fill";
+            fill2.style.width = Math.max(0, (u.hp / type.hp) * 100) + "%";
+            pip2.appendChild(fill2);
+            tile.appendChild(pip2);
+            if (type.capacity && u.cargo.length) {
+              var cargoBadge = document.createElement("div");
+              cargoBadge.className = "cargo-badge";
+              cargoBadge.textContent = cargoOccupied(u);
+              tile.appendChild(cargoBadge);
+            }
+          } else if (isRes) {
+            tile.insertAdjacentHTML("beforeend", '<svg class="goods-icon"><use href="#icon-goods"></use></svg>');
+          } else if (terrain === "forest") {
+            tile.insertAdjacentHTML("beforeend", '<svg class="terrain-icon"><use href="#icon-tree"></use></svg>');
+          } else if (terrain === "mountain") {
+            tile.insertAdjacentHTML("beforeend", '<svg class="terrain-icon"><use href="#icon-mountain"></use></svg>');
+          }
+        }
+
+        tile.addEventListener("click", function (x, y) {
+          return function () { onTileClick(x, y); };
+        }(x, y));
+
+        el.board.appendChild(tile);
+      }
+    }
+  }
+
+  function onTileClick(x, y) {
+    if (state.over) return;
+    var su = selectedUnit();
+
+    if (su) {
+      var reachable = reachableTiles(su);
+      var attackable = attackableTiles(su, reachable);
+      var boardable = boardableTiles(su, reachable);
+      var isReach = reachable.some(function (t) { return t[0] === x && t[1] === y; });
+      var isAtk = attackable.some(function (t) { return t[0] === x && t[1] === y; });
+      var isBoard = boardable.some(function (t) { return t[0] === x && t[1] === y; });
+      if (isAtk) { openCombatAnalysis(su, x, y); return; }
+      if (isBoard) { boardFrigate(su, unitAt(x, y)); render(); return; }
+      if (isReach) { su.x = x; su.y = y; su.acted = true; state.selectedUnitId = null; render(); return; }
+    }
+
+    var u = unitAt(x, y);
+    if (u && u.owner === "player" && !u.acted) {
+      state.selectedUnitId = u.id;
+      state.selectedBaseId = null;
+      if (!el.cityOverlay.hidden) closeCityView();
+      render();
+      return;
+    }
+    var clickedBase = baseAt(x, y);
+    if (clickedBase && clickedBase.id === "player") {
+      state.selectedUnitId = null;
+      state.selectedBaseId = clickedBase.base.id;
+      render();
+      return;
+    }
+    state.selectedUnitId = null;
+    state.selectedBaseId = null;
+    render();
+  }
+
+  function renderHud() {
+    el.hudTurn.textContent = state.turn;
+    el.hudPlayerProd.textContent = state.player.production;
+    el.hudPlayerCities.textContent = state.player.bases.filter(function (b) { return b.alive; }).length;
+    el.hudAiProd.textContent = state.ai.production;
+  }
+
+  function renderSelection() {
+    var su = selectedUnit();
+    if (su) {
+      var type = UNIT_TYPES[su.typeId];
+      var reachableSel = reachableTiles(su);
+      var boardableSel = boardableTiles(su, reachableSel);
+      var hint;
+      if (su.acted) {
+        hint = "Already acted this turn.";
+      } else if (type.capacity) {
+        hint = "Click a green tile to move, or a red tile to attack.";
+      } else if (boardableSel.length) {
+        hint = "Click a green tile to move, a red tile to attack, or a teal tile to board a ship.";
+      } else {
+        hint = "Click a green tile to move, or a red tile to attack.";
+      }
+      var canFound = type.canFoundCity && !su.acted && isValidCitySite(su.x, su.y);
+      var foundHint = "";
+      if (type.canFoundCity && !su.acted && !canFound) {
+        foundHint = '<div class="hint">Move to open, non-mountain ground at least ' + MIN_CITY_DISTANCE + ' tiles from any city to found here.</div>';
+      }
+      // Only a player-owned Scout that hasn't acted yet, standing next to a
+      // living native camp, can negotiate with it.
+      var nearCamp = (su.typeId === "scout" && su.owner === "player" && !su.acted) ? adjacentNativeCamp(su) : null;
+      var negotiateHtml = "";
+      if (nearCamp && nearCamp.pact !== "war") {
+        var hasTribute = !!findTributeUnit(state.player);
+        negotiateHtml = '<div class="hint">' + (nearCamp.pact === "peace" ? "At peace with this native camp." : "A native camp is within reach.") + '</div>' +
+          (nearCamp.pact ? '' : '<button class="view-city" id="askPeaceBtn">Ask for Peace</button>') +
+          '<button class="view-city" id="proposeWarBtn">Propose War Plan</button>' +
+          (hasTribute ? '' : '<div class="hint">Needs a weak unit (Infantry) nearby to give as tribute.</div>');
+      } else if (nearCamp) {
+        negotiateHtml = '<div class="hint">This camp is at war with the AI on your behalf.</div>';
+      }
+      el.selectionBody.innerHTML =
+        '<p class="sel-name">' + type.name + '</p>' +
+        '<div class="stat-row"><span class="k">HP</span><span class="v">' + su.hp + ' / ' + type.hp + '</span></div>' +
+        '<div class="stat-row"><span class="k">Attack</span><span class="v">' + type.attack + '</span></div>' +
+        '<div class="stat-row"><span class="k">Defense</span><span class="v">' + type.defense + '</span></div>' +
+        '<div class="stat-row"><span class="k">Movement</span><span class="v">' + type.movement + '</span></div>' +
+        (type.capacity ? '<div class="stat-row"><span class="k">Cargo</span><span class="v">' + cargoOccupied(su) + ' / ' + type.capacity + '</span></div>' : '') +
+        '<div class="hint">' + hint + '</div>' +
+        foundHint +
+        (canFound ? '<button class="view-city" id="foundCityBtn">Found City</button>' : '') +
+        negotiateHtml +
+        (type.capacity && su.cargo.length
+          ? '<div class="cargo-list">' + su.cargo.map(function (c, i) {
+              var ct = UNIT_TYPES[c.typeId];
+              return '<div class="cargo-row"><span>' + ct.name + ' (' + cargoSlotCost(c.typeId) + ' slot' + (cargoSlotCost(c.typeId) > 1 ? 's' : '') + ')</span><button class="disembark-btn" data-idx="' + i + '">Disembark</button></div>';
+            }).join("") + '</div>'
+          : '');
+      if (type.capacity && su.cargo.length) {
+        Array.prototype.forEach.call(el.selectionBody.querySelectorAll(".disembark-btn"), function (btn) {
+          btn.addEventListener("click", function () {
+            disembarkUnit(su, parseInt(btn.getAttribute("data-idx"), 10));
+            render();
+          });
+        });
+      }
+      if (canFound) {
+        var fcb = document.getElementById("foundCityBtn");
+        if (fcb) fcb.addEventListener("click", function () { foundCityAction(su); });
+      }
+      if (nearCamp && nearCamp.pact !== "war") {
+        var apb = document.getElementById("askPeaceBtn");
+        if (apb) apb.addEventListener("click", function () { askForPeace(su, nearCamp); render(); });
+        var pwb = document.getElementById("proposeWarBtn");
+        if (pwb) pwb.addEventListener("click", function () { proposeWarPlan(su, nearCamp); render(); });
+      }
+    } else if (state.selectedBaseId) {
+      var cityObj = findCityById(state.player, state.selectedBaseId);
+      if (cityObj) {
+        var pbSel = productionBreakdown(state.player);
+        el.selectionBody.innerHTML =
+          '<p class="sel-name">' + cityLabel(state.player, cityObj) + '</p>' +
+          '<div class="stat-row"><span class="k">HP</span><span class="v">' + cityObj.hp + ' / ' + cityObj.maxHp + '</span></div>' +
+          '<div class="stat-row"><span class="k">Production / turn (shared)</span><span class="v">' + pbSel.total + '</span></div>' +
+          '<div class="stat-row"><span class="k">Your cities</span><span class="v">' + state.player.bases.filter(function (b) { return b.alive; }).length + '</span></div>' +
+          '<button class="view-city" id="viewCityBtn">View Inside Base</button>';
+        var vcb = document.getElementById("viewCityBtn");
+        if (vcb) vcb.addEventListener("click", openCityView);
+      } else {
+        el.selectionBody.innerHTML = '<p class="sel-empty">Click one of your units or your base.</p>';
+      }
+    } else {
+      el.selectionBody.innerHTML = '<p class="sel-empty">Click one of your units or your base.</p>';
+    }
+  }
+
+  function foundCityAction(settlerUnit) {
+    if (!isValidCitySite(settlerUnit.x, settlerUnit.y)) return;
+    var f = factionOf(settlerUnit.owner);
+    var city = foundCity(f, settlerUnit.x, settlerUnit.y);
+    removeUnit(settlerUnit);
+    addLog((settlerUnit.owner === "player" ? "You" : "The AI") + " founded " + cityLabel(f, city) + ".", false);
+    state.selectedUnitId = null;
+    render();
+  }
+
+  function renderBuildPanel() {
+    var f = state.player;
+    el.buildSelect.innerHTML = "";
+
+    var unitGroup = document.createElement("optgroup");
+    unitGroup.label = "Units";
+    f.unlocked.forEach(function (id) {
+      var t = UNIT_TYPES[id];
+      var opt = document.createElement("option");
+      opt.value = "unit:" + id;
+      opt.textContent = t.name + " (" + t.cost + " pts)";
+      unitGroup.appendChild(opt);
+    });
+    el.buildSelect.appendChild(unitGroup);
+
+    var availableBuildings = BUILDING_ORDER.filter(function (id) {
+      return f.buildings.indexOf(id) === -1 && !f.buildQueue.some(function (q) { return q.kind === "building" && q.id === id; })
+        && (id !== "shipyard" || factionHasCoastalCity(f));
+    });
+    if (availableBuildings.length) {
+      var buildingGroup = document.createElement("optgroup");
+      buildingGroup.label = "Buildings";
+      availableBuildings.forEach(function (id) {
+        var t = BUILDING_TYPES[id];
+        var opt = document.createElement("option");
+        opt.value = "building:" + id;
+        opt.textContent = t.name + " (" + t.cost + " pts, " + t.desc + ")";
+        buildingGroup.appendChild(opt);
+      });
+      el.buildSelect.appendChild(buildingGroup);
+    }
+
+    var queueText = f.buildQueue.length
+      ? "Building: " + queueItemType(f.buildQueue[0]).name + " (" + f.production + "/" + queueItemType(f.buildQueue[0]).cost + " pts, " + f.buildQueue.length + " queued)"
+      : "Base is idle — pick something and queue it.";
+    if (f.buildings.indexOf("shipyard") === -1 && !factionHasCoastalCity(f)) {
+      queueText += " Found or capture a city on the coast to unlock the Shipyard.";
+    }
+    el.queueHint.textContent = queueText;
+  }
+
+  function renderTech() {
+    el.techList.innerHTML = "";
+    var f = state.player;
+    TECHS.forEach(function (t, i) {
+      var div = document.createElement("div");
+      var done = i < f.techIndex;
+      div.className = "tech-item" + (done ? " done" : "");
+      var pct = done ? 100 : (i === f.techIndex ? Math.min(100, (f.research / t.cost) * 100) : 0);
+      div.innerHTML =
+        '<div class="name"><span>' + t.name + '</span><span>' + (done ? "done" : (i === f.techIndex ? f.research + "/" + t.cost : "locked")) + '</span></div>' +
+        '<div class="tech-bar"><div class="tech-bar-fill" style="width:' + pct + '%"></div></div>';
+      el.techList.appendChild(div);
+    });
+  }
+
+  function renderLog() {
+    if (!state.log.length) { el.logList.innerHTML = '<li class="empty">Nothing yet.</li>'; return; }
+    el.logList.innerHTML = state.log.map(function (l) {
+      return '<li' + (l.win ? ' class="win"' : '') + '>' + l.text + '</li>';
+    }).join("");
+  }
+
+  // ---------- TURN CONTROL ----------
+  var queueBtn = document.createElement("button");
+  queueBtn.className = "wide";
+  queueBtn.textContent = "Queue Unit";
+  queueBtn.style.marginTop = "4px";
+  el.buildSelect.insertAdjacentElement("afterend", queueBtn);
+  queueBtn.addEventListener("click", function () {
+    var raw = el.buildSelect.value;
+    if (!raw) return;
+    var parts = raw.split(":");
+    state.player.buildQueue.push({ kind: parts[0], id: parts[1] });
+    renderBuildPanel();
+    if (!el.cityOverlay.hidden) renderCityView();
+  });
+
+  el.endTurnBtn.addEventListener("click", function () {
+    if (state.over) return;
+    state.selectedUnitId = null;
+    state.selectedBaseId = null;
+
+    tickFaction(state.player);
+    if (state.over) { render(); return; }
+    tickFaction(state.ai);
+    if (state.over) { render(); return; }
+
+    runAiTurn();
+    if (state.over) { render(); return; }
+
+    runNativesTurn();
+    if (state.over) { render(); return; }
+
+    state.turn += 1;
+    addLog("Turn " + state.turn + " begins.");
+    render();
+  });
+
+  el.restartBtn.addEventListener("click", function () { startNewGame(state.difficulty); });
+  el.resultMenuBtn.addEventListener("click", function () { showHome(); });
+
+  el.homePlayBtn.addEventListener("click", showDifficulty);
+  el.homeLoadBtn.addEventListener("click", showLoadGame);
+  el.homeHowToBtn.addEventListener("click", showHowToPlay);
+  el.homeHofBtn.addEventListener("click", showHallOfFame);
+
+  el.diffBabyBtn.addEventListener("click", function () { startNewGame("baby"); });
+  el.diffMediumBtn.addEventListener("click", function () { startNewGame("medium"); });
+  el.diffHardBtn.addEventListener("click", function () { startNewGame("hard"); });
+  el.diffBackBtn.addEventListener("click", showHome);
+
+  el.loadBackBtn.addEventListener("click", showHome);
+  el.howToBackBtn.addEventListener("click", showHome);
+  el.hofBackBtn.addEventListener("click", showHome);
+  el.saveBackBtn.addEventListener("click", function () {
+    hideAllMenus();
+    el.gameScreen.hidden = false;
+  });
+
+  el.saveIconBtn.addEventListener("click", showSaveGame);
+  el.menuIconBtn.addEventListener("click", showHome);
+
+  // Enter also ends the turn, as long as a game is actually in progress and
+  // no overlay (combat analysis, base view, a menu screen, etc.) is open —
+  // otherwise Enter would silently end your turn out from under a dialog.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var tag = (e.target && e.target.tagName) || "";
+    if (tag === "SELECT" || tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON") return;
+    if (!state || state.over) return;
+    if (el.gameScreen.hidden) return;
+    if (!el.combatOverlay.hidden || !el.cityOverlay.hidden || !el.resultOverlay.hidden ||
+        !el.homeOverlay.hidden || !el.difficultyOverlay.hidden || !el.loadOverlay.hidden ||
+        !el.saveOverlay.hidden || !el.howToPlayOverlay.hidden || !el.hallOfFameOverlay.hidden) return;
+    e.preventDefault();
+    el.endTurnBtn.click();
+  });
+
+  el.combatConfirmBtn.addEventListener("click", function () {
+    if (!pendingAttack) return;
+    var attacker = null;
+    var all = state.player.units.concat(state.ai.units);
+    for (var i = 0; i < all.length; i++) if (all[i].id === pendingAttack.unitId) attacker = all[i];
+    var tx = pendingAttack.x, ty = pendingAttack.y;
+    closeCombatAnalysis();
+    if (attacker) resolveUnitAttack(attacker, tx, ty);
+    state.selectedUnitId = null;
+    render();
+  });
+  el.combatCancelBtn.addEventListener("click", function () {
+    closeCombatAnalysis();
+    render();
+  });
+
+  el.cityCloseBtn.addEventListener("click", closeCityView);
+
+  showHome();
+})();
+</script>
