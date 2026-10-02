@@ -1,17 +1,13 @@
 {
-  "name": "adamitos-game",
+  "name": "first-reckoning",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "First Reckoning — a turn-based strategy skirmish built as a single self-contained HTML file.",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node build.js",
+    "test": "node build.js && node --test \"test/*.test.js\""
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
-    "@types/node": "^26.6.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
+    "jsdom": "^27.0.0"
   }
 }

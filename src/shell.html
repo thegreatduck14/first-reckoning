@@ -1,0 +1,499 @@
+<title>The Final War</title>
+<meta name="description" content="Phase 1 vertical slice for Adamito's Game — a single-map turn-based skirmish: build, research, harvest, and fight with the shared unit roster.">
+<style>
+/*@STYLES*/</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Spectral:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Blocky, period-strategy-game-style silhouette icons. Each is a 12x12 pixel grid,
+         drawn with plain rects so they read as flat "unit counter" glyphs rather than art. -->
+    <symbol id="icon-harvester" viewBox="0 0 12 12">
+      <rect x="3" y="1" width="5" height="2" fill="#d9b877"/>
+      <rect x="3" y="1" width="5" height="1" fill="#eccf9b"/>
+      <rect x="2" y="3" width="8" height="4" fill="#8b5e34"/>
+      <rect x="2" y="3" width="8" height="1" fill="#a97540"/>
+      <rect x="1" y="4" width="1" height="2" fill="#5c3b1e"/>
+      <rect x="3" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="7" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="3" y="8" width="2" height="1" fill="#4a2f18" fill-opacity="0.7"/>
+      <rect x="7" y="8" width="2" height="1" fill="#4a2f18" fill-opacity="0.7"/>
+    </symbol>
+    <symbol id="icon-builder" viewBox="0 0 12 12">
+      <rect x="3" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="7" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="2" y="6" width="8" height="2" fill="#8b5e34"/>
+      <rect x="2" y="6" width="8" height="1" fill="#a97540"/>
+      <rect x="4" y="4" width="4" height="2" fill="#d9b877"/>
+      <rect x="8" y="2" width="1" height="4" fill="#7a7a7a"/>
+      <rect x="7" y="1" width="3" height="2" fill="#b0b0b0"/>
+      <rect x="7" y="1" width="3" height="1" fill="#d6d6d6" fill-opacity="0.8"/>
+    </symbol>
+    <symbol id="icon-settler" viewBox="0 0 12 12">
+      <rect x="2" y="8" width="1" height="2" fill="#2c1c10"/>
+      <rect x="8" y="8" width="1" height="2" fill="#2c1c10"/>
+      <rect x="1" y="6" width="9" height="2" fill="#4a3728"/>
+      <rect x="1" y="6" width="9" height="1" fill="#63503c" fill-opacity="0.8"/>
+      <rect x="2" y="4" width="7" height="2" fill="#c9a668"/>
+      <rect x="4" y="3" width="2" height="1" fill="#e7c290"/>
+      <rect x="9" y="1" width="1" height="4" fill="#6b4a2c"/>
+      <rect x="10" y="1" width="2" height="2" fill="#d6a53f"/>
+    </symbol>
+    <symbol id="icon-scout" viewBox="0 0 12 12">
+      <rect x="2" y="6" width="7" height="3" fill="#8a5a30"/>
+      <rect x="2" y="6" width="7" height="1" fill="#a97540" fill-opacity="0.8"/>
+      <rect x="8" y="3" width="2" height="4" fill="#8a5a30"/>
+      <rect x="10" y="3" width="1" height="1" fill="#5c3b1e"/>
+      <rect x="3" y="3" width="2" height="3" fill="#4a2c14"/>
+      <rect x="2" y="9" width="1" height="2" fill="#2c1c10"/>
+      <rect x="4" y="9" width="1" height="2" fill="#2c1c10"/>
+      <rect x="6" y="9" width="1" height="2" fill="#2c1c10"/>
+      <rect x="8" y="9" width="1" height="2" fill="#2c1c10"/>
+      <rect x="5" y="2" width="2" height="1" fill="#5c6b47"/>
+    </symbol>
+    <symbol id="icon-lightInfantry" viewBox="0 0 12 12">
+      <rect x="4" y="2" width="2" height="2" fill="#d9a76d"/>
+      <rect x="3" y="4" width="4" height="4" fill="#3f5a78"/>
+      <rect x="3" y="4" width="4" height="1" fill="#5878a0" fill-opacity="0.8"/>
+      <rect x="3" y="8" width="1" height="3" fill="#2c2c2c"/>
+      <rect x="6" y="8" width="1" height="3" fill="#2c2c2c"/>
+      <rect x="7" y="2" width="1" height="5" fill="#6b4a2c"/>
+      <rect x="7" y="2" width="1" height="2" fill="#9aa0a6"/>
+    </symbol>
+    <symbol id="icon-antiArmorInfantry" viewBox="0 0 12 12">
+      <rect x="4" y="3" width="2" height="2" fill="#d9a76d"/>
+      <rect x="3" y="5" width="4" height="3" fill="#5c6b3f"/>
+      <rect x="3" y="5" width="4" height="1" fill="#788a54" fill-opacity="0.8"/>
+      <rect x="3" y="8" width="2" height="3" fill="#2c2c2c"/>
+      <rect x="6" y="8" width="1" height="2" fill="#2c2c2c"/>
+      <rect x="7" y="2" width="4" height="2" fill="#4a4a4a"/>
+      <rect x="10" y="2" width="1" height="2" fill="#c9963c"/>
+      <rect x="6" y="4" width="2" height="2" fill="#3f4a2c"/>
+    </symbol>
+    <symbol id="icon-lightVehicle" viewBox="0 0 12 12">
+      <rect x="2" y="6" width="8" height="3" fill="#b89a5a"/>
+      <rect x="2" y="6" width="8" height="1" fill="#d3b878" fill-opacity="0.8"/>
+      <rect x="4" y="4" width="4" height="2" fill="#6e7b6a"/>
+      <rect x="2" y="9" width="2" height="2" fill="#2c2c2c"/>
+      <rect x="8" y="9" width="2" height="2" fill="#2c2c2c"/>
+      <rect x="9" y="6" width="1" height="1" fill="#e0c060"/>
+    </symbol>
+    <symbol id="icon-heavyVehicle" viewBox="0 0 12 12">
+      <rect x="1" y="8" width="10" height="2" fill="#2c2c2c"/>
+      <rect x="2" y="5" width="8" height="3" fill="#4d5a45"/>
+      <rect x="2" y="5" width="8" height="1" fill="#647259" fill-opacity="0.8"/>
+      <rect x="5" y="3" width="3" height="2" fill="#5c6b52"/>
+      <rect x="8" y="3" width="3" height="1" fill="#333833"/>
+    </symbol>
+    <symbol id="icon-artillery" viewBox="0 0 12 12">
+      <rect x="2" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="7" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="3" y="7" width="6" height="1" fill="#6b4a2c"/>
+      <rect x="5" y="7" width="1" height="2" fill="#4a4a4a"/>
+      <rect x="6" y="3" width="5" height="2" fill="#4a4a4a"/>
+      <rect x="6" y="3" width="5" height="1" fill="#6b6b6b" fill-opacity="0.7"/>
+      <rect x="9" y="3" width="1" height="2" fill="#c9963c"/>
+    </symbol>
+    <symbol id="icon-flyer" viewBox="0 0 12 12">
+      <rect x="4" y="5" width="4" height="2" fill="#3d2c1c"/>
+      <rect x="1" y="4" width="3" height="1" fill="#c9b483"/>
+      <rect x="8" y="4" width="3" height="1" fill="#c9b483"/>
+      <rect x="8" y="5" width="2" height="1" fill="#c9b483" fill-opacity="0.7"/>
+      <rect x="5" y="4" width="2" height="1" fill="#c9963c"/>
+    </symbol>
+    <symbol id="icon-missile" viewBox="0 0 12 12">
+      <!-- A steep diagonal rocket climbing away from a small exhaust trail —
+           reads as airborne ordnance next to the Ornithopter's flat wings. -->
+      <rect x="8" y="1" width="2" height="2" fill="#c9963c"/>
+      <rect x="6" y="3" width="2" height="2" fill="#9aa0a6"/>
+      <rect x="4" y="5" width="2" height="2" fill="#9aa0a6"/>
+      <rect x="2" y="7" width="2" height="2" fill="#5a5f66"/>
+      <rect x="1" y="9" width="2" height="1" fill="#bd5a41" fill-opacity="0.85"/>
+      <rect x="0" y="10" width="2" height="1" fill="#bd5a41" fill-opacity="0.55"/>
+    </symbol>
+    <symbol id="icon-base" viewBox="0 0 12 12">
+      <rect x="1" y="4" width="10" height="6"/>
+      <rect x="1" y="3" width="1" height="1"/>
+      <rect x="3" y="3" width="1" height="1"/>
+      <rect x="5" y="3" width="1" height="1"/>
+      <rect x="7" y="3" width="1" height="1"/>
+      <rect x="9" y="3" width="1" height="1"/>
+      <rect x="5" y="0" width="1" height="3"/>
+      <rect x="6" y="0" width="2" height="2"/>
+      <rect x="5" y="7" width="2" height="3" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-camp" viewBox="0 0 12 12">
+      <!-- A blocky teepee/tent silhouette, matching icon-base's pixel-fort
+           style, so a native camp reads as a camp rather than a fort. -->
+      <rect x="4" y="0" width="1" height="1"/>
+      <rect x="7" y="0" width="1" height="1"/>
+      <rect x="5" y="1" width="2" height="2"/>
+      <rect x="4" y="3" width="4" height="1"/>
+      <rect x="3" y="5" width="6" height="1"/>
+      <rect x="2" y="7" width="8" height="1"/>
+      <rect x="1" y="9" width="10" height="2"/>
+      <rect x="5" y="7" width="2" height="4" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-goods" viewBox="0 0 12 12">
+      <rect x="2" y="4" width="8" height="6"/>
+      <rect x="2" y="4" width="8" height="1" fill-opacity="0.5"/>
+      <rect x="5" y="4" width="2" height="6" fill-opacity="0.5"/>
+    </symbol>
+    <symbol id="icon-frigate" viewBox="0 0 12 12">
+      <rect x="1" y="7" width="10" height="2" fill="#5c3b1e"/>
+      <rect x="1" y="7" width="10" height="1" fill="#7a5230" fill-opacity="0.8"/>
+      <rect x="2" y="9" width="8" height="1" fill="#2c1c10" fill-opacity="0.5"/>
+      <rect x="5" y="2" width="1" height="5" fill="#3d2c1c"/>
+      <rect x="6" y="3" width="4" height="1" fill="#e6dcc0"/>
+      <rect x="6" y="5" width="3" height="1" fill="#e6dcc0"/>
+    </symbol>
+    <symbol id="icon-trireme" viewBox="0 0 12 12">
+      <!-- A low, oared native boat — deliberately squat and primitive next
+           to the frigate's taller hull and rigging. -->
+      <rect x="1" y="8" width="10" height="2" fill="#5c3b1e"/>
+      <rect x="1" y="8" width="10" height="1" fill="#7a5230" fill-opacity="0.8"/>
+      <rect x="2" y="10" width="8" height="1" fill="#2c1c10" fill-opacity="0.5"/>
+      <rect x="0" y="9" width="1" height="1" fill="#3d2c1c"/>
+      <rect x="11" y="9" width="1" height="1" fill="#3d2c1c"/>
+      <rect x="5" y="3" width="1" height="5" fill="#3d2c1c"/>
+      <rect x="6" y="3" width="3" height="3" fill="#c9b483"/>
+    </symbol>
+    <symbol id="icon-carrier" viewBox="0 0 12 12">
+      <rect x="1" y="6" width="10" height="2" fill="#5a6068"/>
+      <rect x="1" y="5" width="10" height="1" fill="#787f88"/>
+      <rect x="2" y="8" width="8" height="1" fill="#2c2c2c" fill-opacity="0.5"/>
+      <rect x="8" y="2" width="2" height="4" fill="#3c4046"/>
+      <rect x="8" y="1" width="1" height="1" fill="#c9963c"/>
+      <rect x="3" y="5" width="1" height="1" fill="#b89a5a" fill-opacity="0.85"/>
+      <rect x="5" y="5" width="1" height="1" fill="#b89a5a" fill-opacity="0.85"/>
+    </symbol>
+    <symbol id="icon-battleship" viewBox="0 0 12 12">
+      <rect x="1" y="6" width="10" height="3" fill="#3c4652"/>
+      <rect x="1" y="6" width="10" height="1" fill="#556170" fill-opacity="0.8"/>
+      <rect x="2" y="9" width="8" height="1" fill="#181c20" fill-opacity="0.5"/>
+      <rect x="3" y="4" width="2" height="2" fill="#2c333a"/>
+      <rect x="7" y="4" width="2" height="2" fill="#2c333a"/>
+      <rect x="3" y="3" width="1" height="1" fill="#c9963c"/>
+      <rect x="8" y="3" width="1" height="1" fill="#c9963c"/>
+    </symbol>
+    <symbol id="icon-tree" viewBox="0 0 12 12">
+      <rect x="5" y="8" width="2" height="3"/>
+      <rect x="4" y="6" width="4" height="2"/>
+      <rect x="3" y="4" width="6" height="2"/>
+      <rect x="4" y="2" width="4" height="2"/>
+    </symbol>
+    <symbol id="icon-mountain" viewBox="0 0 12 12">
+      <rect x="1" y="9" width="10" height="1"/>
+      <rect x="2" y="7" width="3" height="2"/>
+      <rect x="4" y="5" width="3" height="2"/>
+      <rect x="3" y="7" width="1" height="1" fill-opacity="0.5"/>
+      <rect x="6" y="8" width="4" height="1"/>
+      <rect x="7" y="6" width="3" height="2"/>
+      <rect x="8" y="3" width="2" height="3"/>
+      <rect x="8" y="3" width="1" height="1" fill-opacity="0.6"/>
+    </symbol>
+    <symbol id="icon-barracks" viewBox="0 0 12 12">
+      <rect x="1" y="5" width="10" height="5"/>
+      <rect x="1" y="4" width="10" height="1" fill-opacity="0.6"/>
+      <rect x="5" y="2" width="2" height="3"/>
+      <rect x="4" y="7" width="1" height="3" fill-opacity="0.4"/>
+      <rect x="8" y="7" width="2" height="3" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-foundry" viewBox="0 0 12 12">
+      <rect x="2" y="6" width="8" height="4"/>
+      <rect x="7" y="1" width="2" height="5"/>
+      <rect x="7" y="1" width="2" height="1" fill-opacity="0.6"/>
+      <rect x="3" y="7" width="2" height="2" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-shipyard" viewBox="0 0 12 12">
+      <rect x="1" y="8" width="10" height="2"/>
+      <rect x="2" y="4" width="1" height="4"/>
+      <rect x="9" y="4" width="1" height="4"/>
+      <rect x="2" y="3" width="8" height="1" fill-opacity="0.6"/>
+      <rect x="5" y="1" width="2" height="2"/>
+    </symbol>
+    <symbol id="icon-antiAir" viewBox="0 0 12 12">
+      <rect x="3" y="9" width="6" height="2"/>
+      <rect x="5" y="6" width="2" height="3"/>
+      <rect x="5" y="1" width="2" height="5" fill-opacity="0.85"/>
+      <rect x="2" y="2" width="2" height="1" fill-opacity="0.6"/>
+      <rect x="8" y="2" width="2" height="1" fill-opacity="0.6"/>
+      <rect x="1" y="4" width="2" height="1" fill-opacity="0.4"/>
+      <rect x="9" y="4" width="2" height="1" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-brave" viewBox="0 0 12 12">
+      <rect x="4" y="2" width="2" height="2" fill="#c98a56"/>
+      <rect x="3" y="4" width="4" height="4" fill="#a8452f"/>
+      <rect x="3" y="4" width="4" height="1" fill="#c15b3f" fill-opacity="0.85"/>
+      <rect x="3" y="8" width="1" height="3" fill="#5c3b1e"/>
+      <rect x="6" y="8" width="1" height="3" fill="#5c3b1e"/>
+      <rect x="7" y="1" width="1" height="7" fill="#6b4a2c"/>
+      <rect x="7" y="1" width="1" height="2" fill="#9aa0a6"/>
+      <rect x="4" y="1" width="2" height="1" fill="#2f6f6a"/>
+    </symbol>
+    <symbol id="icon-rocketTubeBrave" viewBox="0 0 12 12">
+      <rect x="4" y="3" width="2" height="2" fill="#c98a56"/>
+      <rect x="3" y="5" width="4" height="3" fill="#a8452f"/>
+      <rect x="3" y="5" width="4" height="1" fill="#c15b3f" fill-opacity="0.85"/>
+      <rect x="3" y="8" width="2" height="3" fill="#5c3b1e"/>
+      <rect x="6" y="8" width="1" height="2" fill="#5c3b1e"/>
+      <rect x="7" y="2" width="4" height="2" fill="#4a4a4a"/>
+      <rect x="10" y="2" width="1" height="2" fill="#c9963c"/>
+      <rect x="4" y="2" width="2" height="1" fill="#2f6f6a"/>
+    </symbol>
+    <symbol id="icon-mountedRocketTubeBrave" viewBox="0 0 12 12">
+      <rect x="2" y="6" width="7" height="3" fill="#6b4a2c"/>
+      <rect x="2" y="6" width="7" height="1" fill="#8a6438" fill-opacity="0.8"/>
+      <rect x="8" y="3" width="2" height="4" fill="#6b4a2c"/>
+      <rect x="10" y="3" width="1" height="1" fill="#3d2c1c"/>
+      <rect x="3" y="3" width="2" height="3" fill="#3d2c1c"/>
+      <rect x="2" y="9" width="1" height="2" fill="#241a10"/>
+      <rect x="4" y="9" width="1" height="2" fill="#241a10"/>
+      <rect x="6" y="9" width="1" height="2" fill="#241a10"/>
+      <rect x="8" y="9" width="1" height="2" fill="#241a10"/>
+      <rect x="4" y="1" width="4" height="1" fill="#4a4a4a"/>
+      <rect x="4" y="2" width="1" height="1" fill="#2f6f6a"/>
+    </symbol>
+    <symbol id="icon-tankBrave" viewBox="0 0 12 12">
+      <rect x="1" y="8" width="10" height="2" fill="#2c2c2c"/>
+      <rect x="2" y="5" width="8" height="3" fill="#8a6438"/>
+      <rect x="2" y="5" width="8" height="1" fill="#a8452f" fill-opacity="0.6"/>
+      <rect x="5" y="3" width="3" height="2" fill="#6b4a2c"/>
+      <rect x="8" y="3" width="3" height="1" fill="#333833"/>
+      <rect x="5" y="2" width="1" height="1" fill="#2f6f6a"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap" id="gameScreen" hidden>
+  <div class="corner-actions">
+    <button class="icon-btn" id="saveIconBtn" title="Save game" aria-label="Save game"><svg viewBox="0 0 24 24"><path d="M5 3h11l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm1 2v16h12V8.83L15.17 5H15v5H8V5H6zm4 0v3h3V5h-3zM7 14h10v2H7v-2zm0 4h10v2H7v-2z"/></svg></button>
+    <button class="icon-btn" id="menuIconBtn" title="Main menu" aria-label="Main menu"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg></button>
+  </div>
+  <header>
+    <div class="titleblock">
+      <div class="eyebrow">Adamito's Game &middot; Phase 1 Vertical Slice</div>
+      <h1>The Final War</h1>
+      <p class="sub">One map, two factions, the shared roster. Harvest to speed up production, research unlocks the heavier units, and destroying the enemy base ends it.</p>
+    </div>
+    <div class="hud">
+      <div class="hud-stat"><span class="k">Turn</span><span class="v" id="hudTurn">1</span></div>
+      <div class="hud-stat player"><span class="k">Your Production</span><span class="v" id="hudPlayerProd">0</span></div>
+      <div class="hud-stat player"><span class="k">Your Cities</span><span class="v" id="hudPlayerCities">1</span></div>
+      <div class="hud-stat ai"><span class="k" id="hudAiLabel">AI Production</span><span class="v" id="hudAiProd">0</span></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="board-panel">
+      <div class="board-scroll" id="boardScroll">
+        <div class="board" id="board"></div>
+      </div>
+      <p class="board-hint">Map is bigger than the view — drag/scroll to explore. Islands are separated by water; a Frigate carries land units across.</p>
+    </div>
+
+    <div class="side-col">
+      <div class="panel">
+        <h2>Selection</h2>
+        <div id="selectionBody"><p class="sel-empty">Click one of your units or your base.</p></div>
+      </div>
+
+      <div class="panel">
+        <h2>Build Queue</h2>
+        <select id="buildSelect"></select>
+        <div class="hint" id="queueHint">Base is idle.</div>
+      </div>
+
+      <div class="panel">
+        <h2>Research</h2>
+        <div id="techList"></div>
+      </div>
+
+      <button class="end-turn" id="endTurnBtn">End Turn</button>
+
+      <div class="panel">
+        <h2>Log</h2>
+        <ul class="log-list" id="logList"><li class="empty">Turn 1 begins.</li></ul>
+      </div>
+    </div>
+  </div>
+
+  <footer class="note">
+    v0.2 simplifications, flagged so they don't get mistaken for final design: attacking resolves at range (no move-then-attack sequencing), no fog of war, tech unlocks linearly rather than branching, and production/research accrue at a flat rate rather than population growth. Forest costs 2 movement and gives the defender +2 defense; mountains cost 3 and give +3. The river is naval-only and splits the map except at the ford in the top row — the Frigate starts pre-placed on it since there's no dock/coastal-production mechanic yet to build one from a landlocked base.
+  </footer>
+</div>
+
+<div class="result-overlay confirm-overlay" id="confirmOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="result-card">
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmBody"></p>
+    <div style="display:flex; gap:10px;">
+      <button class="cancel" id="confirmCancelBtn" style="width:auto;padding-inline:20px;">Cancel</button>
+      <button class="end-turn danger" id="confirmOkBtn" style="width:auto;padding-inline:24px;">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<div class="result-overlay pass-device-overlay" id="passDeviceOverlay" hidden>
+  <div class="result-card">
+    <h2 id="passDeviceTitle">Pass the device</h2>
+    <p id="passDeviceBody"></p>
+    <button class="end-turn" id="passDeviceBtn" style="width:auto;padding-inline:24px;">Start Turn</button>
+  </div>
+</div>
+
+<div class="result-overlay" id="resultOverlay" hidden>
+  <div class="result-card">
+    <h2 id="resultTitle">Victory</h2>
+    <p id="resultBody"></p>
+    <div style="display:flex; gap:10px;">
+      <button class="end-turn" id="restartBtn" style="width:auto;padding-inline:24px;">Play Again</button>
+      <button class="cancel" id="resultMenuBtn" style="width:auto;padding-inline:20px;">Main Menu</button>
+    </div>
+  </div>
+</div>
+
+<div class="result-overlay" id="combatOverlay" hidden>
+  <div class="combat-card">
+    <h2>Combat Analysis</h2>
+    <div class="combat-compare">
+      <div class="combat-side player">
+        <div class="badge" id="combatAttackerBadge"></div>
+        <div class="name" id="combatAttackerName"></div>
+        <div class="mini-stats" id="combatAttackerStats"></div>
+        <div class="terrain-note" id="combatAttackerTerrain"></div>
+      </div>
+      <div class="combat-vs-mark">VS</div>
+      <div class="combat-side enemy">
+        <div class="badge" id="combatDefenderBadge"></div>
+        <div class="name" id="combatDefenderName"></div>
+        <div class="mini-stats" id="combatDefenderStats"></div>
+        <div class="terrain-note" id="combatDefenderTerrain"></div>
+      </div>
+    </div>
+    <div class="combat-result">
+      <div class="col"><span class="lbl">You Deal</span><span class="num dealt" id="combatDealt">0</span></div>
+      <div class="col"><span class="lbl">You Take</span><span class="num taken" id="combatTaken">0</span></div>
+    </div>
+    <div class="combat-actions">
+      <button class="cancel" id="combatCancelBtn">Cancel</button>
+      <button class="end-turn" id="combatConfirmBtn">Confirm Attack</button>
+    </div>
+  </div>
+</div>
+
+<div class="result-overlay" id="cityOverlay" hidden>
+  <div class="city-card">
+    <h2 id="cityTitle">Inside Your Base</h2>
+
+    <div class="city-section">
+      <h3>Production (shared across your cities)</h3>
+      <div class="city-row"><span>Base rate</span><span id="cityBaseVal">+2</span></div>
+      <div class="city-row"><span>Harvesting bonus</span><span id="cityHarvestVal">+0</span></div>
+      <div class="city-row"><span>Extra cities bonus</span><span id="cityCitiesVal">+0</span></div>
+      <div class="city-row"><span>Building bonus</span><span id="cityBuildingVal">+0</span></div>
+      <div class="city-row total"><span>Total / turn</span><span id="cityTotalVal">2</span></div>
+    </div>
+
+    <div class="city-section">
+      <h3>Buildings</h3>
+      <div id="cityBuildingsList" class="city-list"></div>
+    </div>
+
+    <div class="city-section">
+      <h3>Build Queue</h3>
+      <div id="cityQueueList" class="city-list"></div>
+    </div>
+
+    <div class="city-section">
+      <h3>Garrison</h3>
+      <div id="cityGarrisonList" class="city-list"></div>
+    </div>
+
+    <button class="cancel" id="cityCloseBtn">Close</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="homeOverlay">
+  <div class="menu-card">
+    <div class="home-eyebrow">Adamito's Game &middot; Phase 1</div>
+    <h1 class="home-title">The Final War</h1>
+    <p class="home-sub">One map, the shared roster, a final war to settle.</p>
+    <button class="menu-btn primary" id="homePlayBtn">Play New Game</button>
+    <button class="menu-btn" id="homeLoadBtn">Load Game</button>
+    <button class="menu-btn" id="homeHowToBtn">How to Play</button>
+    <button class="menu-btn" id="homeHofBtn">Hall of Fame</button>
+    <button class="menu-btn" id="homeMpBtn">Multiplayer</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="difficultyOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Choose Your Difficulty</h2>
+    <button class="menu-btn" id="diffBabyBtn">Baby Mode</button>
+    <div class="menu-btn-desc">The AI builds and researches slowly. A relaxed first skirmish.</div>
+    <button class="menu-btn" id="diffMediumBtn">Medium</button>
+    <div class="menu-btn-desc">The AI plays at a standard, even pace.</div>
+    <button class="menu-btn" id="diffHardBtn">Hard</button>
+    <div class="menu-btn-desc">The AI builds and researches faster, picks its fights, defends its cities, and ships armies over to invade you.</div>
+    <button class="menu-btn" id="diffBackBtn" style="margin-top:6px;">Back</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="loadOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Load Game</h2>
+    <div class="slot-list" id="loadSlotList"></div>
+    <button class="menu-btn" id="importSaveBtn">Import Save From File</button>
+    <div class="menu-btn-desc">Saves live in this browser only — use the download icon on a slot to back one up.</div>
+    <input type="file" id="importSaveInput" accept=".json,application/json" hidden>
+    <button class="menu-btn" id="loadBackBtn">Back</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="saveOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Save Game</h2>
+    <div class="slot-list" id="saveSlotList"></div>
+    <button class="menu-btn" id="saveBackBtn">Cancel</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="howToPlayOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">How to Play</h2>
+    <p class="howtoplay-text">You and the AI each start with one city, a Harvester, a Scout, and a Settler on a fogged, procedurally generated island map — every new game reshuffles the terrain, so scout before you commit. Harvesters parked on a goods tile add production; that shared production pool (plus a bonus for every extra city you found) funds your build queue, while research slowly unlocks stronger units and buildings. Move units around the grid and click an enemy unit or base within reach to see a Combat Analysis of damage dealt and taken before you confirm the attack — infantry counters vehicles, vehicles hit hard in the open, artillery is built to crack bases, and flyers ignore terrain entirely. Settlers found new cities on open, non-mountain ground away from existing ones; Frigates, Carriers, and Battleships (built from a coastal Shipyard) ferry land units across water to other islands. Scattered native camps are neutral until a Scout stands next to one — ask for peace to make that camp permanently safe, or strike a war plan (handing over a spare infantry unit as tribute) to turn its garrison into an ally that fights the AI for you. Starting turn 30, barbarian landing parties start arriving by Sail Boat and raid everyone — you, the AI, and the natives alike; watch for their Robbers especially, which sneak up to a city, steal one of your researched unlocks, and vanish rather than fight. Whoever loses every city loses the game; end your turn with the End Turn button once you've moved, built, and attacked for the round.</p>
+    <button class="menu-btn" id="howToBackBtn">Back</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="hallOfFameOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Hall of Fame</h2>
+    <div class="hof-list" id="hofList"></div>
+    <button class="menu-btn" id="hofBackBtn">Back</button>
+  </div>
+</div>
+
+<div class="menu-overlay" id="multiplayerOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Local Multiplayer</h2>
+    <p class="howtoplay-text" style="margin:0 0 4px;">2 players, one device — pass it over when it's the other player's turn. Online play from separate devices is coming soon.</p>
+    <label class="mp-label">Player 1 name</label>
+    <input type="text" id="mpName1Input" class="mp-input" maxlength="20" placeholder="Player 1">
+    <label class="mp-label">Player 2 name</label>
+    <input type="text" id="mpName2Input" class="mp-input" maxlength="20" placeholder="Player 2">
+    <button class="menu-btn" id="mpDiffBabyBtn">Start &middot; Baby Mode</button>
+    <button class="menu-btn" id="mpDiffMediumBtn">Start &middot; Medium</button>
+    <button class="menu-btn" id="mpDiffHardBtn">Start &middot; Hard</button>
+    <button class="menu-btn" id="mpBackBtn" style="margin-top:6px;">Back</button>
+  </div>
+</div>
+
+<script>
+(function () {
+/*@SCRIPT*/})();
+</script>

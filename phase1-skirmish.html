@@ -451,6 +451,24 @@
   }
   button.slot-delete-btn:hover { border-color: var(--rust); color: var(--rust); }
   button.slot-delete-btn svg { width: 14px; height: 14px; fill: currentColor; }
+  button.slot-export-btn { margin-right: 0; }
+  button.slot-export-btn:hover { border-color: var(--brass); color: var(--brass); }
+
+  /* Above the menu screens, since it's opened from the save/load lists. */
+  .confirm-overlay { z-index: 30; }
+  button.end-turn.danger { background: var(--rust); color: var(--ink); }
+  /* Fully opaque, so the next hotseat player can't see the last one's board. */
+  .pass-device-overlay { background: var(--bg); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 40;
+    max-width: min(480px, calc(100vw - 32px));
+    background: var(--panel); border: 1px solid var(--brass); color: var(--ink);
+    padding: 10px 16px; border-radius: 2px; font-size: 13px; line-height: 1.45;
+    box-shadow: 0 4px 16px var(--shadow);
+  }
+  .toast.error { border-color: var(--rust); color: var(--rust); }
+  .toast[hidden] { display: none; }
 
   .hof-item {
     display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -796,7 +814,20 @@
   </footer>
 </div>
 
-<div class="result-overlay" id="passDeviceOverlay" hidden>
+<div class="result-overlay confirm-overlay" id="confirmOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="result-card">
+    <h2 id="confirmTitle"></h2>
+    <p id="confirmBody"></p>
+    <div style="display:flex; gap:10px;">
+      <button class="cancel" id="confirmCancelBtn" style="width:auto;padding-inline:20px;">Cancel</button>
+      <button class="end-turn danger" id="confirmOkBtn" style="width:auto;padding-inline:24px;">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<div class="result-overlay pass-device-overlay" id="passDeviceOverlay" hidden>
   <div class="result-card">
     <h2 id="passDeviceTitle">Pass the device</h2>
     <p id="passDeviceBody"></p>
@@ -897,7 +928,7 @@
     <button class="menu-btn" id="diffMediumBtn">Medium</button>
     <div class="menu-btn-desc">The AI plays at a standard, even pace.</div>
     <button class="menu-btn" id="diffHardBtn">Hard</button>
-    <div class="menu-btn-desc">The AI builds and researches faster and comes at you harder.</div>
+    <div class="menu-btn-desc">The AI builds and researches faster, picks its fights, defends its cities, and ships armies over to invade you.</div>
     <button class="menu-btn" id="diffBackBtn" style="margin-top:6px;">Back</button>
   </div>
 </div>
@@ -906,6 +937,9 @@
   <div class="menu-card">
     <h2 class="menu-heading">Load Game</h2>
     <div class="slot-list" id="loadSlotList"></div>
+    <button class="menu-btn" id="importSaveBtn">Import Save From File</button>
+    <div class="menu-btn-desc">Saves live in this browser only — use the download icon on a slot to back one up.</div>
+    <input type="file" id="importSaveInput" accept=".json,application/json" hidden>
     <button class="menu-btn" id="loadBackBtn">Back</button>
   </div>
 </div>
@@ -1077,8 +1111,8 @@
   var LS_SAVES_KEY = "adamitosGame.saves.v1";
   var LS_HOF_KEY = "adamitosGame.hallOfFame.v1";
   var DIFFICULTY_LABEL = { baby: "Baby Mode", medium: "Medium", hard: "Hard" };
-  // Baby/Hard tune the AI's production+research pace only — a deliberately
-  // simple lever rather than reworking its decision-making per difficulty.
+  // Baby/Hard tune the AI's production+research pace. Hard also switches the
+  // AI to smarter tactics — see the HARD-MODE AI section.
   var DIFFICULTY_AI_MULT = { baby: 0.6, medium: 1, hard: 1.5 };
 
   function setBoardCssVars() {
@@ -1095,41 +1129,114 @@
       return arr.slice(0, SAVE_SLOTS);
     } catch (e) { return new Array(SAVE_SLOTS).fill(null); }
   }
+  // Returns false when the browser refuses the write (storage full, blocked,
+  // or private mode) so callers can tell the player instead of pretending
+  // the save went through.
   function writeSaveSlots(arr) {
-    try { localStorage.setItem(LS_SAVES_KEY, JSON.stringify(arr)); } catch (e) {}
+    try { localStorage.setItem(LS_SAVES_KEY, JSON.stringify(arr)); return true; } catch (e) { return false; }
   }
   function deleteSaveSlot(idx) {
     var slots = loadSaveSlots();
     slots[idx] = null;
-    writeSaveSlots(slots);
+    return writeSaveSlots(slots);
   }
-  function saveGameToSlot(idx) {
-    var slots = loadSaveSlots();
-    slots[idx] = {
+
+  // Bump SAVE_VERSION whenever the shape of `state` changes in a way an
+  // older save wouldn't already satisfy, and add a step to migrateSave that
+  // upgrades the previous version. Saves made before versioning existed
+  // have no `version` field and are treated as version 1.
+  var SAVE_VERSION = 2;
+  var SAVE_FILE_FORMAT = "first-reckoning-save";
+
+  function buildSaveSlot() {
+    return {
+      version: SAVE_VERSION,
       savedAt: Date.now(),
       difficulty: state.difficulty || "medium",
       turn: state.turn,
       cities: state.player.bases.filter(function (b) { return b.alive; }).length,
+      hotseat: !!state.hotseat,
       cols: COLS, rows: ROWS,
       snapshot: {
         state: state,
         terrain: TERRAIN_GRID, resource: RESOURCE_GRID, resourceList: RESOURCE_LIST, island: ISLAND_GRID
       }
     };
-    writeSaveSlots(slots);
-    return true;
   }
+
+  // Upgrades a slot in place to SAVE_VERSION. Returns an error message for
+  // a slot that can't be used, or null when it's good to load.
+  function migrateSave(slot) {
+    if (!slot || typeof slot !== "object" || !slot.snapshot || !slot.snapshot.state) return "This save is damaged or isn't a First Reckoning save.";
+    var v = slot.version || 1;
+    if (v > SAVE_VERSION) return "This save was made by a newer version of the game.";
+    if ((slot.cols || COLS) !== COLS || (slot.rows || ROWS) !== ROWS) return "This save uses a different map size.";
+    var snap = slot.snapshot;
+    if (!Array.isArray(snap.terrain) || snap.terrain.length !== ROWS || !Array.isArray(snap.resource) ||
+        !Array.isArray(snap.island) || !snap.state.player || !snap.state.ai) {
+      return "This save is damaged or isn't a First Reckoning save.";
+    }
+    if (v < 2) {
+      // v1 -> v2: local hotseat fields and the newer per-game flags may be
+      // missing from saves made before those features shipped.
+      var s = snap.state;
+      if (s.hotseat === undefined) s.hotseat = false;
+      if (s.hotseatSecondTurn === undefined) s.hotseatSecondTurn = false;
+      if (!s.difficulty) s.difficulty = slot.difficulty || "medium";
+      if (s.hofRecorded === undefined) s.hofRecorded = !!s.over;
+      if (!Array.isArray(snap.resourceList)) {
+        snap.resourceList = [];
+        snap.resource.forEach(function (row, y) { row.forEach(function (r, x) { if (r) snap.resourceList.push([x, y]); }); });
+      }
+      slot.hotseat = !!s.hotseat;
+      slot.version = 2;
+    }
+    return null;
+  }
+
+  function saveGameToSlot(idx) {
+    var slots = loadSaveSlots();
+    slots[idx] = buildSaveSlot();
+    return writeSaveSlots(slots);
+  }
+  // Returns null on success, or an error message — and on failure leaves
+  // the game currently in memory untouched.
   function loadGameFromSlot(idx) {
     var slots = loadSaveSlots();
     var slot = slots[idx];
-    if (!slot) return false;
+    if (!slot) return "That slot is empty.";
+    var err = migrateSave(slot);
+    if (err) return err;
     var snap = slot.snapshot;
     TERRAIN_GRID = snap.terrain;
     RESOURCE_GRID = snap.resource;
     RESOURCE_LIST = snap.resourceList;
     ISLAND_GRID = snap.island;
     state = snap.state;
-    return true;
+    return null;
+  }
+
+  // Export/import: a save slot wrapped in a small envelope and written to a
+  // .json file, so a game can be backed up or moved to another browser.
+  function exportSlotText(idx) {
+    var slot = loadSaveSlots()[idx];
+    if (!slot) return null;
+    return JSON.stringify({ format: SAVE_FILE_FORMAT, slot: slot });
+  }
+  // Puts an imported save into the first empty slot. Returns
+  // { slot: index } on success or { error: message }.
+  function importSaveText(text) {
+    var parsed;
+    try { parsed = JSON.parse(text); } catch (e) { return { error: "That file isn't a First Reckoning save." }; }
+    if (!parsed || parsed.format !== SAVE_FILE_FORMAT) return { error: "That file isn't a First Reckoning save." };
+    var err = migrateSave(parsed.slot);
+    if (err) return { error: err };
+    var slots = loadSaveSlots();
+    var free = slots.indexOf(null);
+    if (free === -1) return { error: "All " + SAVE_SLOTS + " slots are full — delete one first." };
+    slots[free] = parsed.slot;
+    if (!writeSaveSlots(slots)) return { error: "Couldn't store the save — browser storage is full or blocked." };
+    return { slot: free };
   }
 
   function loadHallOfFame() {
@@ -2671,8 +2778,11 @@
   function runAiTurn() {
     var f = state.ai;
     if (!factionAlive(f)) return;
+    var hard = isHardAi();
 
-    if (!f.buildQueue.length) {
+    if (!f.buildQueue.length && hard) {
+      aiChooseBuildHard(f);
+    } else if (!f.buildQueue.length) {
       var aliveSettlers = f.units.filter(function (u) { return UNIT_TYPES[u.typeId].canFoundCity; }).length;
       var availableBuildings = BUILDING_ORDER.filter(function (id) {
         return f.buildings.indexOf(id) === -1 && (id !== "shipyard" || factionHasCoastalCity(f));
@@ -2776,6 +2886,8 @@
         return;
       }
 
+      if (hard) { aiHardActUnit(u, f); return; }
+
       var reachable = reachableTiles(u);
       var attackable = attackableTiles(u, reachable);
       if (attackable.length) {
@@ -2841,15 +2953,315 @@
   function moveToward(u, tx, ty) {
     var reachable = reachableTiles(u);
     if (!reachable.length) return;
+    // Hard's AI measures distance along real paths, so it walks around
+    // water and mountains instead of getting stuck against them.
+    var dist = (u.owner === "ai" && isHardAi()) ? pathDistancesTo(u, tx, ty) : null;
+    if (dist && !isFinite(dist[u.y][u.x])) dist = null;
+    var distOf = function (x, y) { return dist ? dist[y][x] : Math.abs(x - tx) + Math.abs(y - ty); };
     var best = null, bestD = Infinity;
     reachable.forEach(function (t) {
-      var d = Math.abs(t[0] - tx) + Math.abs(t[1] - ty);
+      var d = distOf(t[0], t[1]);
       if (d < bestD) { bestD = d; best = t; }
     });
-    var curD = Math.abs(u.x - tx) + Math.abs(u.y - ty);
+    var curD = distOf(u.x, u.y);
     if (best && bestD < curD) { u.x = best[0]; u.y = best[1]; }
   }
 
+  // Movement-cost distance from every tile to (tx, ty) for this unit's kind
+  // of movement, ignoring other units (they'll have moved by the time it
+  // gets there). The target tile itself is always enterable.
+  function pathDistancesTo(u, tx, ty) {
+    var type = UNIT_TYPES[u.typeId];
+    var domain = type.domain || "land";
+    var dist = [];
+    for (var y = 0; y < ROWS; y++) dist.push(new Array(COLS).fill(Infinity));
+    dist[ty][tx] = 0;
+    var queue = [[tx, ty]];
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    while (queue.length) {
+      // Small grid: a linear scan for the closest open tile is plenty fast.
+      var bi = 0;
+      for (var i = 1; i < queue.length; i++) if (dist[queue[i][1]][queue[i][0]] < dist[queue[bi][1]][queue[bi][0]]) bi = i;
+      var cur = queue.splice(bi, 1)[0];
+      var cd = dist[cur[1]][cur[0]];
+      for (var di = 0; di < 4; di++) {
+        var nx = cur[0] + dirs[di][0], ny = cur[1] + dirs[di][1];
+        if (!inBounds(nx, ny)) continue;
+        // Cost of stepping from (nx,ny) onto cur — cur's terrain decides.
+        var step = (cur[0] === tx && cur[1] === ty) ? 1 : moveCost(terrainAt(cur[0], cur[1]), domain, type.category);
+        if (!isFinite(step) || !isFinite(moveCost(terrainAt(nx, ny), domain, type.category))) continue;
+        if (cd + step < dist[ny][nx]) {
+          if (!isFinite(dist[ny][nx])) queue.push([nx, ny]);
+          dist[ny][nx] = cd + step;
+        }
+      }
+    }
+    return dist;
+  }
+
+
+  // ---------- HARD-MODE AI ----------
+  // Hard doesn't only out-produce you (see DIFFICULTY_AI_MULT): its units
+  // also fight smarter. They only take attacks that pay off, pull badly
+  // hurt units back home, rally to a threatened city, and ship land armies
+  // across the water to invade. Baby Mode and Medium keep the simpler
+  // behaviour in runAiTurn. Hard knows where your cities are when planning
+  // an invasion, but still has to actually see a unit to attack it.
+  var AI_RETREAT_HP_FRACTION = 0.35;
+  var AI_THREAT_RADIUS = 4;   // enemy this close to an AI city counts as a threat
+  var AI_RALLY_RADIUS = 10;   // units this close to a threatened city go to defend it
+  var AI_INVASION_MIN_CARGO = 2;
+
+  function isHardAi() { return state.difficulty === "hard" && !state.hotseat; }
+
+  function manhattan(ax, ay, bx, by) { return Math.abs(ax - bx) + Math.abs(ay - by); }
+  function aiUnitValue(id) {
+    var t = UNIT_TYPES[id];
+    return t.attack * 2 + t.defense + t.hp / 2;
+  }
+  function aiIsCombatUnit(u) {
+    var t = UNIT_TYPES[u.typeId];
+    return t.attack > 0 && !t.canFoundCity && u.typeId !== "harvester";
+  }
+  function aiCanCrossWater(u) {
+    var t = UNIT_TYPES[u.typeId];
+    return t.category === "air" || (t.domain || "land") === "naval";
+  }
+  // Ships with room for at least two units count as troop transports.
+  function aiIsTransportType(t) { return (t.capacity || 0) >= 2; }
+  function aliveCities(f) { return f.bases.filter(function (b) { return b.alive; }); }
+  function nearestCityOf(f, x, y) {
+    var best = null, bestD = Infinity;
+    aliveCities(f).forEach(function (b) {
+      var d = manhattan(b.x, b.y, x, y);
+      if (d < bestD) { bestD = d; best = b; }
+    });
+    return best;
+  }
+
+  // Native units/camps are only worth hitting when they're already hostile
+  // to the AI — attacking a neutral camp just turns it against the AI.
+  function aiNativeTargetIsHostile(p) {
+    if (p.targetUnit && p.targetUnit.owner === "natives") {
+      var camp = campById(p.targetUnit.campId);
+      return !!(p.targetUnit.atWar || (camp && (camp.pact === "war" || camp.startledByAi)));
+    }
+    if (p.targetBase && p.targetBase.id === "natives") {
+      return p.targetBase.base.pact === "war" || !!p.targetBase.base.startledByAi;
+    }
+    return true;
+  }
+
+  // Scores every attack the unit could make right now using the exact
+  // combat preview, and returns the best tile — or null when no attack is
+  // worth making (a losing trade, or one that would get the unit killed).
+  function aiBestAttack(u, tiles) {
+    var best = null, bestScore = 0;
+    tiles.forEach(function (t) {
+      var p = previewCombat(u, t[0], t[1]);
+      if (p.innerArtilleryActive || !aiNativeTargetIsHostile(p)) return;
+      var targetHp = p.targetUnit ? p.targetUnit.hp : p.targetBase.base.hp;
+      var kills = p.dealt >= targetHp;
+      var taken = kills ? 0 : p.taken;
+      var score = Math.min(p.dealt, targetHp) * 2 - taken * 1.5;
+      if (kills) score += p.targetBase ? 200 : 15 + (p.targetUnit ? aiUnitValue(p.targetUnit.typeId) : 0);
+      if (p.targetBase && !p.targetBase.base.isCamp) score += 10; // cities win the game
+      if (taken >= u.hp) score -= 40 + aiUnitValue(u.typeId);
+      if (score > bestScore) { bestScore = score; best = t; }
+    });
+    return best;
+  }
+
+  // The closest visible enemy unit to any AI city, if one is within
+  // AI_THREAT_RADIUS of it.
+  function aiCityThreat(f) {
+    var enemy = enemyOf(f.id);
+    var best = null, bestD = Infinity;
+    aliveCities(f).forEach(function (b) {
+      enemy.units.forEach(function (e) {
+        if (!f.visible || !f.visible[e.y][e.x]) return;
+        var d = manhattan(b.x, b.y, e.x, e.y);
+        if (d <= AI_THREAT_RADIUS && d < bestD) { bestD = d; best = { unit: e, city: b }; }
+      });
+    });
+    return best;
+  }
+
+  function aiVisibleEnemyNear(u, radius) {
+    var f = factionOf(u.owner);
+    return enemyOf(u.owner).units.some(function (e) {
+      return f.visible && f.visible[e.y][e.x] && manhattan(u.x, u.y, e.x, e.y) <= radius;
+    });
+  }
+
+  function aiChooseBuildHard(f) {
+    var enemy = enemyOf(f.id);
+    var military = f.units.filter(aiIsCombatUnit).length;
+    var cities = aliveCities(f).length;
+    var settlers = f.units.filter(function (u) { return UNIT_TYPES[u.typeId].canFoundCity; }).length;
+    var home = aliveCities(f)[0];
+    var enemyOverseas = !!home && aliveCities(enemy).some(function (b) { return islandIdAt(b.x, b.y) !== islandIdAt(home.x, home.y); });
+    var enemyHasAir = enemy.units.some(function (u) { return UNIT_TYPES[u.typeId].category === "air"; });
+    var has = function (id) { return f.buildings.indexOf(id) !== -1; };
+
+    var wantBuilding = null;
+    if (!has("barracks") && military >= 2) wantBuilding = "barracks";
+    else if (!has("foundry") && military >= 3) wantBuilding = "foundry";
+    else if (!has("shipyard") && enemyOverseas && factionHasCoastalCity(f) && military >= 4) wantBuilding = "shipyard";
+    else if (!has("antiAir") && enemyHasAir && military >= 6) wantBuilding = "antiAir";
+    if (wantBuilding) { f.buildQueue.push({ kind: "building", id: wantBuilding }); return; }
+
+    if (settlers === 0 && cities < 4 && military >= 2) { f.buildQueue.push({ kind: "unit", id: "aiSettler" }); return; }
+
+    var transports = f.units.filter(function (u) { return aiIsTransportType(UNIT_TYPES[u.typeId]); }).length;
+    var landArmy = f.units.filter(function (u) { return aiIsCombatUnit(u) && !aiCanCrossWater(u); }).length;
+    if (enemyOverseas && has("shipyard") && transports === 0 && landArmy >= 2 && f.unlocked.indexOf("frigate") !== -1) {
+      f.buildQueue.push({ kind: "unit", id: "frigate" });
+      return;
+    }
+
+    // Otherwise the strongest combat unit it can field, now and then
+    // taking the runner-up so its army isn't all one type. With the enemy
+    // overseas and no way to ship troops, it switches to aircraft once its
+    // home defence is in place — more land units would just sit at home.
+    var coastal = factionHasCoastalCity(f);
+    var stranded = enemyOverseas && !(has("shipyard") && coastal);
+    var pool = f.unlocked.filter(function (id) {
+      var t = UNIT_TYPES[id];
+      if (!t.attack || t.canFoundCity || id === "harvester" || t.oneTimeUse) return false;
+      // Warships can't touch a city's coastal artillery, so naval units
+      // are only ever built as transports (handled above).
+      if ((t.domain || "land") === "naval") return false;
+      return true;
+    });
+    if (stranded && landArmy >= 6) {
+      var air = pool.filter(function (id) { return UNIT_TYPES[id].category === "air"; });
+      if (air.length) pool = air;
+    }
+    pool.sort(function (a, b) { return aiUnitValue(b) - aiUnitValue(a); });
+    var pick = pool.length ? pool[(Math.random() < 0.65 || pool.length === 1) ? 0 : 1] : "lightInfantry";
+    f.buildQueue.push({ kind: "unit", id: pick });
+  }
+
+  function aiHardActUnit(u, f) {
+    var type = UNIT_TYPES[u.typeId];
+    var naval = (type.domain || "land") === "naval";
+
+    // A transport carrying troops sails for the enemy and lands them.
+    if (naval && aiIsTransportType(type) && u.cargo.length) { aiHardSailTransport(u, f); return; }
+
+    var reachable = reachableTiles(u);
+    var target = aiBestAttack(u, attackableTiles(u, reachable));
+    if (target) { resolveUnitAttack(u, target[0], target[1]); return; }
+    u.acted = true;
+    if (!type.attack) return;
+
+    // Badly hurt and under threat: fall back toward the nearest friendly city.
+    if (u.hp <= Math.ceil(type.hp * AI_RETREAT_HP_FRACTION) && aiVisibleEnemyNear(u, 3)) {
+      var refuge = nearestCityOf(f, u.x, u.y);
+      if (refuge) moveToward(u, refuge.x, refuge.y);
+      return;
+    }
+
+    // An empty transport waits in port for troops to board.
+    if (naval && aiIsTransportType(type)) { aiReturnToPort(u, f); return; }
+
+    var myIsland = islandIdAt(u.x, u.y);
+    var canReach = function (x, y) { return aiCanCrossWater(u) || islandIdAt(x, y) === myIsland; };
+
+    var threat = aiCityThreat(f);
+    if (threat && manhattan(u.x, u.y, threat.city.x, threat.city.y) <= AI_RALLY_RADIUS && canReach(threat.unit.x, threat.unit.y)) {
+      moveToward(u, threat.unit.x, threat.unit.y);
+      return;
+    }
+
+    var seen = nearestEnemy(u);
+    if (seen && canReach(seen[0], seen[1])) { moveToward(u, seen[0], seen[1]); return; }
+
+    var city = nearestCityOf(enemyOf(f.id), u.x, u.y);
+    if (!city) return;
+    if (canReach(city.x, city.y)) { moveToward(u, city.x, city.y); return; }
+
+    // A land unit with the enemy overseas heads for a transport and boards.
+    var boardable = boardableTiles(u, reachable).filter(function (t) { return aiIsTransportType(UNIT_TYPES[unitAt(t[0], t[1]).typeId]); });
+    if (boardable.length) { boardFrigate(u, unitAt(boardable[0][0], boardable[0][1])); return; }
+    var ship = aiNearestTransportWithRoom(f, u);
+    if (ship) moveToward(u, ship.x, ship.y);
+  }
+
+  // The water tile nearest (nearX, nearY) with open land of the given island
+  // beside it — somewhere troops can board from, or be landed onto (a city
+  // tile itself can't be stood on).
+  function aiDockTile(ship, island, nearX, nearY) {
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    var best = null, bestD = Infinity;
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if (terrainAt(x, y) !== "water") continue;
+        var other = unitAt(x, y);
+        if (other && other.id !== ship.id) continue;
+        var dock = dirs.some(function (d) {
+          var nx = x + d[0], ny = y + d[1];
+          return inBounds(nx, ny) && terrainAt(nx, ny) !== "water" && islandIdAt(nx, ny) === island && !baseAt(nx, ny);
+        });
+        if (!dock) continue;
+        var dd = manhattan(x, y, nearX, nearY);
+        if (dd < bestD) { bestD = dd; best = [x, y]; }
+      }
+    }
+    return best;
+  }
+  function aiSailTo(ship, tile) {
+    if (tile && (tile[0] !== ship.x || tile[1] !== ship.y)) moveToward(ship, tile[0], tile[1]);
+  }
+  function aiReturnToPort(ship, f) {
+    var home = aliveCities(f)[0];
+    if (home) aiSailTo(ship, aiDockTile(ship, islandIdAt(home.x, home.y), home.x, home.y));
+  }
+
+  function aiNearestTransportWithRoom(f, u) {
+    var best = null, bestD = Infinity;
+    f.units.forEach(function (s) {
+      var t = UNIT_TYPES[s.typeId];
+      if (!aiIsTransportType(t) || cargoOccupied(s) + cargoSlotCost(u.typeId) > t.capacity) return;
+      var d = manhattan(s.x, s.y, u.x, u.y);
+      if (d < bestD) { bestD = d; best = s; }
+    });
+    return best;
+  }
+
+  function aiHardSailTransport(u, f) {
+    var type = UNIT_TYPES[u.typeId];
+    u.acted = true;
+    // Wait in port until enough troops are aboard, unless nobody else is
+    // coming (no land combat units left ashore on the home island).
+    var home = aliveCities(f)[0];
+    var stillComing = !!home && f.units.some(function (o) {
+      return aiIsCombatUnit(o) && !aiCanCrossWater(o) && islandIdAt(o.x, o.y) === islandIdAt(home.x, home.y);
+    });
+    if (cargoOccupied(u) < Math.min(type.capacity, AI_INVASION_MIN_CARGO) && stillComing) { aiReturnToPort(u, f); return; }
+
+    var city = nearestCityOf(enemyOf(f.id), u.x, u.y);
+    if (!city) return;
+    var targetIsland = islandIdAt(city.x, city.y);
+    if (!aiUnloadOnto(u, targetIsland)) {
+      aiSailTo(u, aiDockTile(u, targetIsland, city.x, city.y));
+      aiUnloadOnto(u, targetIsland);
+    }
+  }
+
+  // Lands every unit it can onto open ground of the given island next to
+  // the ship. Returns true if anything disembarked.
+  function aiUnloadOnto(ship, island) {
+    var landed = false;
+    for (var i = ship.cargo.length - 1; i >= 0; i--) {
+      var spots = findAllDisembarkTiles(ship).filter(function (t) { return islandIdAt(t[0], t[1]) === island; });
+      if (!spots.length) break;
+      disembarkUnitAt(ship, i, spots[0][0], spots[0][1]);
+      landed = true;
+    }
+    return landed;
+  }
   // ---------- RENDER ----------
   var el = {
     board: document.getElementById("board"),
@@ -2928,7 +3340,15 @@
     passDeviceOverlay: document.getElementById("passDeviceOverlay"),
     passDeviceTitle: document.getElementById("passDeviceTitle"),
     passDeviceBody: document.getElementById("passDeviceBody"),
-    passDeviceBtn: document.getElementById("passDeviceBtn")
+    passDeviceBtn: document.getElementById("passDeviceBtn"),
+    toast: document.getElementById("toast"),
+    confirmOverlay: document.getElementById("confirmOverlay"),
+    confirmTitle: document.getElementById("confirmTitle"),
+    confirmBody: document.getElementById("confirmBody"),
+    confirmOkBtn: document.getElementById("confirmOkBtn"),
+    confirmCancelBtn: document.getElementById("confirmCancelBtn"),
+    importSaveBtn: document.getElementById("importSaveBtn"),
+    importSaveInput: document.getElementById("importSaveInput")
   };
   var pendingAttack = null;
 
@@ -2969,6 +3389,7 @@
   // Turn handler) — covers the board so the next player's info isn't on
   // screen before they've actually picked up the device.
   function showPassDevice(name) {
+    el.passDeviceTitle.textContent = name + "'s turn";
     el.passDeviceBody.textContent = "Hand the device to " + name + ", then tap Start Turn.";
     el.passDeviceOverlay.hidden = false;
   }
@@ -2998,6 +3419,62 @@
     return "Turn " + slot.turn + " · " + (DIFFICULTY_LABEL[slot.difficulty] || slot.difficulty) +
       " · " + slot.cities + (slot.cities === 1 ? " city" : " cities") + " · " + formatSavedAt(slot.savedAt);
   }
+  // A short message along the bottom of the screen — used to confirm saves
+  // and to report anything that went wrong with saving, loading or files.
+  var toastTimer = null;
+  function showToast(message, isError) {
+    el.toast.textContent = message;
+    el.toast.className = "toast" + (isError ? " error" : "");
+    el.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.hidden = true; }, isError ? 6000 : 2500);
+  }
+
+  // In-page confirmation for destructive actions (window.confirm is blocked
+  // in some sandboxed hosts, and doesn't match the game's look).
+  var pendingConfirm = null;
+  function askConfirm(title, body, okLabel, onOk) {
+    el.confirmTitle.textContent = title;
+    el.confirmBody.textContent = body;
+    el.confirmOkBtn.textContent = okLabel;
+    pendingConfirm = onOk;
+    el.confirmOverlay.hidden = false;
+    el.confirmCancelBtn.focus();
+  }
+  function closeConfirm() {
+    el.confirmOverlay.hidden = true;
+    pendingConfirm = null;
+  }
+
+  function saveToSlotAndReturn(i) {
+    if (!saveGameToSlot(i)) {
+      showToast("Save failed — your browser's storage is full or blocked. Try deleting a slot, or export a save to a file.", true);
+      return;
+    }
+    addLog("Game saved to Slot " + (i + 1) + ".");
+    hideAllMenus();
+    el.gameScreen.hidden = false;
+    render();
+    showToast("Saved to Slot " + (i + 1) + ".");
+  }
+
+  function downloadSlot(i) {
+    var text = exportSlotText(i);
+    if (!text) return;
+    try {
+      var blob = new Blob([text], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "first-reckoning-slot" + (i + 1) + "-turn" + (loadSaveSlots()[i].turn) + ".json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    } catch (e) {
+      showToast("Couldn't export the save — this browser blocked the download.", true);
+    }
+  }
+
   function renderSlotList(container, mode) {
     var slots = loadSaveSlots();
     container.innerHTML = "";
@@ -3009,19 +3486,27 @@
 
       if (slot) {
         row.className = "slot-item";
-        main.innerHTML = '<span class="slot-name">Slot ' + (i + 1) + '</span><span class="slot-meta">' + slotSummaryText(slot) + '</span>';
+        main.innerHTML = '<span class="slot-name">Slot ' + (i + 1) + (slot.hotseat ? " · 2 players" : "") + '</span><span class="slot-meta">' + slotSummaryText(slot) + '</span>';
         main.addEventListener("click", function () {
           if (mode === "load") {
-            if (loadGameFromSlot(i)) beginPlay();
+            var err = loadGameFromSlot(i);
+            if (err) { showToast("Couldn't load Slot " + (i + 1) + ": " + err, true); return; }
+            beginPlay();
           } else {
-            saveGameToSlot(i);
-            addLog("Game saved to Slot " + (i + 1) + ".");
-            hideAllMenus();
-            el.gameScreen.hidden = false;
-            render();
+            askConfirm("Overwrite Slot " + (i + 1) + "?", "The game saved there (" + slotSummaryText(slot) + ") will be replaced. This can't be undone.",
+              "Overwrite", function () { saveToSlotAndReturn(i); });
           }
         });
         row.appendChild(main);
+
+        var exp = document.createElement("button");
+        exp.type = "button";
+        exp.className = "slot-delete-btn slot-export-btn";
+        exp.title = "Export this save to a file";
+        exp.setAttribute("aria-label", "Export Slot " + (i + 1));
+        exp.innerHTML = '<svg viewBox="0 0 24 24"><path d="M11 3h2v10l3.5-3.5 1.4 1.4L12 16.8l-5.9-5.9 1.4-1.4L11 13V3zM5 18h14v2H5v-2z"/></svg>';
+        exp.addEventListener("click", function () { downloadSlot(i); });
+        row.appendChild(exp);
 
         var del = document.createElement("button");
         del.type = "button";
@@ -3030,21 +3515,18 @@
         del.setAttribute("aria-label", "Delete Slot " + (i + 1));
         del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2zM9 9v9h1V9H9zm5 0v9h1V9h-1z"/></svg>';
         del.addEventListener("click", function () {
-          deleteSaveSlot(i);
-          renderSlotList(container, mode);
+          askConfirm("Delete Slot " + (i + 1) + "?", "The game saved there (" + slotSummaryText(slot) + ") will be permanently deleted.",
+            "Delete", function () {
+              if (!deleteSaveSlot(i)) showToast("Couldn't delete — your browser's storage is blocked.", true);
+              renderSlotList(container, mode);
+            });
         });
         row.appendChild(del);
       } else {
         row.className = "slot-item empty" + (mode === "load" ? " loadable" : "");
         main.innerHTML = '<span class="slot-name">Slot ' + (i + 1) + '</span><span class="slot-meta">Empty Slot</span>';
         if (mode === "save") {
-          main.addEventListener("click", function () {
-            saveGameToSlot(i);
-            addLog("Game saved to Slot " + (i + 1) + ".");
-            hideAllMenus();
-            el.gameScreen.hidden = false;
-            render();
-          });
+          main.addEventListener("click", function () { saveToSlotAndReturn(i); });
         } else {
           main.disabled = true;
         }
@@ -3629,6 +4111,10 @@
     addLog("Turn " + state.turn + " begins.");
     maybeSpawnBarbarians();
     render();
+    // The round-end swap hands control back to the first human, so they
+    // need the same cover screen the mid-round handoff gets — otherwise the
+    // second player is left looking at the first player's board.
+    if (state.hotseat && !state.over) showPassDevice(state.player.displayName);
   });
 
   el.restartBtn.addEventListener("click", function () {
@@ -3662,6 +4148,32 @@
     el.passDeviceOverlay.hidden = true;
   });
 
+  el.confirmOkBtn.addEventListener("click", function () {
+    var fn = pendingConfirm;
+    closeConfirm();
+    if (fn) fn();
+  });
+  el.confirmCancelBtn.addEventListener("click", closeConfirm);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !el.confirmOverlay.hidden) closeConfirm();
+  });
+
+  el.importSaveBtn.addEventListener("click", function () { el.importSaveInput.click(); });
+  el.importSaveInput.addEventListener("change", function () {
+    var file = el.importSaveInput.files && el.importSaveInput.files[0];
+    el.importSaveInput.value = "";
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var result = importSaveText(String(reader.result));
+      if (result.error) { showToast("Import failed: " + result.error, true); return; }
+      renderSlotList(el.loadSlotList, "load");
+      showToast("Imported into Slot " + (result.slot + 1) + ".");
+    };
+    reader.onerror = function () { showToast("Couldn't read that file.", true); };
+    reader.readAsText(file);
+  });
+
   el.diffBabyBtn.addEventListener("click", function () { startNewGame("baby"); });
   el.diffMediumBtn.addEventListener("click", function () { startNewGame("medium"); });
   el.diffHardBtn.addEventListener("click", function () { startNewGame("hard"); });
@@ -3690,7 +4202,7 @@
     if (!el.combatOverlay.hidden || !el.cityOverlay.hidden || !el.resultOverlay.hidden ||
         !el.homeOverlay.hidden || !el.difficultyOverlay.hidden || !el.loadOverlay.hidden ||
         !el.saveOverlay.hidden || !el.howToPlayOverlay.hidden || !el.hallOfFameOverlay.hidden ||
-        !el.multiplayerOverlay.hidden || !el.passDeviceOverlay.hidden) return;
+        !el.multiplayerOverlay.hidden || !el.passDeviceOverlay.hidden || !el.confirmOverlay.hidden) return;
     e.preventDefault();
     el.endTurnBtn.click();
   });
@@ -3712,6 +4224,22 @@
   });
 
   el.cityCloseBtn.addEventListener("click", closeCityView);
+
+  // Test hook: the jsdom tests in test/ set window.__FR_TEST__ before the
+  // page runs to reach engine internals. Never present in a real browser.
+  if (window.__FR_TEST__) {
+    window.__FR_TEST__.game = {
+      get state() { return state; },
+      set state(s) { state = s; },
+      el: el, newGame: newGame, startHotseatGame: startHotseatGame, render: render,
+      saveGameToSlot: saveGameToSlot, loadGameFromSlot: loadGameFromSlot, loadSaveSlots: loadSaveSlots,
+      exportSlotText: exportSlotText, importSaveText: importSaveText, migrateSave: migrateSave,
+      runAiTurn: runAiTurn, tickFaction: tickFaction, newUnit: newUnit, unitAt: unitAt, baseAt: baseAt,
+      terrainAt: terrainAt, previewCombat: previewCombat, UNIT_TYPES: UNIT_TYPES, LS_SAVES_KEY: LS_SAVES_KEY, SAVE_VERSION: SAVE_VERSION,
+      aiBestAttack: aiBestAttack, attackableTiles: attackableTiles, reachableTiles: reachableTiles, islandIdAt: islandIdAt,
+      updateFogOfWar: updateFogOfWar, COLS: COLS, ROWS: ROWS
+    };
+  }
 
   showHome();
 })();

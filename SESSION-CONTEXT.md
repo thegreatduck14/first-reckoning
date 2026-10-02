@@ -12,9 +12,9 @@ https://github.com/thegreatduck14/first-reckoning
 
 `phase0-arena.html` is the earlier standalone combat prototype ("The
 Reckoning Table") that proved out the unit roster and combat formula before
-the full map/turn loop existed. `src/` and `dist/` are an early TypeScript
-scaffold, superseded by the plain-JS logic embedded directly in the HTML
-builds.
+the full map/turn loop existed. Since October 2026 `phase1-skirmish.html` is
+built from `src/` by `npm run build` (see README) — edit `src/`, not the
+built file. The old TypeScript scaffold was removed.
 
 The live, currently-published build is the Claude Artifact at:
 https://claude.ai/artifact/D9TEXq8KUJphheRFwLmoVX
@@ -91,15 +91,8 @@ regressions. No open test failures as of the last publish.
   when it was created on GitHub, which didn't share history with the fresh
   local init — required `git merge --allow-unrelated-histories -X ours`
   to reconcile before the push would succeed.
-- **The user pasted a live GitHub PAT directly into chat twice this
-  session.** Both times it was used only for the immediate push and never
-  written to persistent memory; the first one should be treated as
-  compromised and rotated. The second, working token is saved locally on
-  the user's machine at `git.txt` inside this project folder — it is
-  listed in `.gitignore` so it will never be committed, but it is **not**
-  otherwise protected (plain text on disk). Recommend the user move it to
-  a proper credential manager (Windows Credential Manager / `git config
-  credential.helper`) rather than leaving it as a loose file long-term.
+- Pushes now go through the `adamstone80` GitHub account, which is a
+  collaborator on the repo — no token file is needed.
 
 ## Current state / where things stand
 
@@ -115,14 +108,24 @@ regressions. No open test failures as of the last publish.
 
 ## Open items / known simplifications (not bugs, just flagged scope)
 
-- Difficulty only tunes AI production/research pace, not its actual
-  decision-making/aggression.
-- Save/load tribute and diplomacy state round-trips through `JSON.stringify`
-  of the whole game `state` object plus the map grids — works, but is a
-  flat blob with no versioning/migration if the save format ever changes.
-- No confirmation dialogs anywhere for destructive actions (overwriting a
-  save slot, deleting a save slot) — deliberate simplicity choice, flagged
-  each time it was introduced.
+- Baby/Medium AI still never attacks the player across water (its land
+  army only targets enemies it can see on its own island). Hard has smarter
+  tactics, including shipping armies over to invade.
 - See the Claude Docs plan doc's "Open questions & risks" section for the
   longer-standing design-level open questions (platform, faction count,
   art style — all already resolved/confirmed there).
+
+## October 2026 update (local, Claude Code)
+
+- Split the game into `src/` + `build.js` (the build output is still the
+  single self-contained `phase1-skirmish.html`), added jsdom tests under
+  `test/` (`npm test`).
+- Saves: failed saves are reported; saves carry a `version` and old ones are
+  migrated on load; overwrite/delete ask for confirmation; saves can be
+  exported to / imported from a .json file.
+- Hotseat: the handoff screen now also appears at the end of each round, and
+  is fully opaque.
+- Hard AI: picks fights using the combat preview, retreats badly hurt units,
+  rallies to threatened cities, paths around terrain, and ferries armies by
+  Frigate to invade (or builds aircraft when it can't ship).
+- The published Artifact has **not** been republished with these changes.
