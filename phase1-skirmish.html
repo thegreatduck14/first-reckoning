@@ -1,4 +1,4 @@
-<title>First Reckoning</title>
+<title>The Final War</title>
 <meta name="description" content="Phase 1 vertical slice for Adamito's Game — a single-map turn-based skirmish: build, research, harvest, and fight with the shared unit roster.">
 <style>
   :root {
@@ -16,6 +16,7 @@
     --sage: #7fa06e;
     --rust: #bd5a41;
     --rust-dim: #8a4230;
+    --barbarian: #8a2a2a;
     --board: #4fa3a8;
     --tile: #2c2417;
     --tile-resource: #4a3d1e;
@@ -40,6 +41,7 @@
     --sage: #4d6b3e;
     --rust: #9c4128;
     --rust-dim: #7a3220;
+    --barbarian: #7a2020;
     --board: #2f7d82;
     --tile: #e3d5ae;
     --tile-resource: #d4b96a;
@@ -54,7 +56,7 @@
       --bg: #f4ecd8; --bg-2: #ece0c4; --panel: #fbf5e6; --panel-2: #f2e8d0;
       --edge: #cdb888; --edge-soft: #ddc9a0; --ink: #2c2114; --ink-dim: #5b4c34;
       --ink-faint: #8a7a58; --brass: #93601c; --brass-dim: #6f4813; --sage: #4d6b3e;
-      --rust: #9c4128; --rust-dim: #7a3220; --board: #2f7d82; --tile: #e3d5ae; --tile-resource: #d4b96a;
+      --rust: #9c4128; --rust-dim: #7a3220; --barbarian: #7a2020; --board: #2f7d82; --tile: #e3d5ae; --tile-resource: #d4b96a;
       --tile-forest: #9cb37c; --tile-mountain: #b6a889; --tile-water: #8fb9cc;
       --shadow: rgba(60,45,20,0.15); color-scheme: light;
     }
@@ -106,7 +108,7 @@
     display: grid;
     grid-template-columns: repeat(var(--cols, 28), var(--tile-px, 34px));
     grid-template-rows: repeat(var(--rows, 18), var(--tile-px, 34px));
-    gap: 3px;
+    gap: 1px;
     width: max-content;
   }
   .tile {
@@ -151,6 +153,7 @@
   .tile.reachable { outline: 2px solid var(--sage); outline-offset: -2px; cursor: pointer; }
   .tile.attackable { outline: 2px solid var(--rust); outline-offset: -2px; cursor: pointer; }
   .tile.boardable { outline: 2px solid var(--board); outline-offset: -2px; cursor: pointer; }
+  .tile.disembarkable { outline: 2px dashed var(--brass); outline-offset: -2px; cursor: pointer; }
   .tile.selected { outline: 2px solid var(--brass); outline-offset: -2px; }
 
   .goods-icon {
@@ -176,6 +179,7 @@
   .token.player { background: var(--sage); }
   .token.ai { background: var(--rust); }
   .token.natives { background: var(--brass); }
+  .token.barbarians { background: var(--barbarian); }
   .token.acted { opacity: 0.45; }
   .token svg { width: 68%; height: 68%; fill: rgba(0,0,0,0.72); }
   .base-token {
@@ -186,6 +190,7 @@
   .base-token.player { background: var(--sage); }
   .base-token.natives { background: var(--brass); }
   .base-token.ai { background: var(--rust); }
+  .base-token.barbarians { background: var(--barbarian); }
   .base-token svg { width: 74%; height: 74%; fill: rgba(0,0,0,0.72); }
   .hp-pip {
     position: absolute; bottom: 2px; left: 2px; right: 2px;
@@ -351,6 +356,7 @@
     padding: 9px; border-radius: 2px; cursor: pointer; width: 100%; margin-top: 6px;
   }
   button.view-city:hover { border-color: var(--brass); color: var(--brass); }
+  button.disband-btn:hover { border-color: var(--rust); color: var(--rust); }
 
   footer.note { font-size: 12px; color: var(--ink-faint); line-height: 1.5; border-top: 1px solid var(--edge-soft); padding-top: 12px; }
 
@@ -397,6 +403,14 @@
   .menu-card h2.menu-heading {
     font-family: 'Oswald', sans-serif; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--brass); margin: 0 0 6px; text-align: center;
+  }
+  .mp-label {
+    font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .mp-input {
+    background: var(--panel-2); border: 1px solid var(--edge); color: var(--ink);
+    border-radius: 2px; padding: 10px; font-size: 14px; font-family: inherit;
   }
   button.menu-btn {
     font-family: 'Oswald', sans-serif; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase;
@@ -478,6 +492,16 @@
       <rect x="3" y="8" width="2" height="1" fill="#4a2f18" fill-opacity="0.7"/>
       <rect x="7" y="8" width="2" height="1" fill="#4a2f18" fill-opacity="0.7"/>
     </symbol>
+    <symbol id="icon-builder" viewBox="0 0 12 12">
+      <rect x="3" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="7" y="8" width="2" height="2" fill="#2c1c10"/>
+      <rect x="2" y="6" width="8" height="2" fill="#8b5e34"/>
+      <rect x="2" y="6" width="8" height="1" fill="#a97540"/>
+      <rect x="4" y="4" width="4" height="2" fill="#d9b877"/>
+      <rect x="8" y="2" width="1" height="4" fill="#7a7a7a"/>
+      <rect x="7" y="1" width="3" height="2" fill="#b0b0b0"/>
+      <rect x="7" y="1" width="3" height="1" fill="#d6d6d6" fill-opacity="0.8"/>
+    </symbol>
     <symbol id="icon-settler" viewBox="0 0 12 12">
       <rect x="2" y="8" width="1" height="2" fill="#2c1c10"/>
       <rect x="8" y="8" width="1" height="2" fill="#2c1c10"/>
@@ -550,6 +574,16 @@
       <rect x="8" y="5" width="2" height="1" fill="#c9b483" fill-opacity="0.7"/>
       <rect x="5" y="4" width="2" height="1" fill="#c9963c"/>
     </symbol>
+    <symbol id="icon-missile" viewBox="0 0 12 12">
+      <!-- A steep diagonal rocket climbing away from a small exhaust trail —
+           reads as airborne ordnance next to the Ornithopter's flat wings. -->
+      <rect x="8" y="1" width="2" height="2" fill="#c9963c"/>
+      <rect x="6" y="3" width="2" height="2" fill="#9aa0a6"/>
+      <rect x="4" y="5" width="2" height="2" fill="#9aa0a6"/>
+      <rect x="2" y="7" width="2" height="2" fill="#5a5f66"/>
+      <rect x="1" y="9" width="2" height="1" fill="#bd5a41" fill-opacity="0.85"/>
+      <rect x="0" y="10" width="2" height="1" fill="#bd5a41" fill-opacity="0.55"/>
+    </symbol>
     <symbol id="icon-base" viewBox="0 0 12 12">
       <rect x="1" y="4" width="10" height="6"/>
       <rect x="1" y="3" width="1" height="1"/>
@@ -560,6 +594,18 @@
       <rect x="5" y="0" width="1" height="3"/>
       <rect x="6" y="0" width="2" height="2"/>
       <rect x="5" y="7" width="2" height="3" fill-opacity="0.4"/>
+    </symbol>
+    <symbol id="icon-camp" viewBox="0 0 12 12">
+      <!-- A blocky teepee/tent silhouette, matching icon-base's pixel-fort
+           style, so a native camp reads as a camp rather than a fort. -->
+      <rect x="4" y="0" width="1" height="1"/>
+      <rect x="7" y="0" width="1" height="1"/>
+      <rect x="5" y="1" width="2" height="2"/>
+      <rect x="4" y="3" width="4" height="1"/>
+      <rect x="3" y="5" width="6" height="1"/>
+      <rect x="2" y="7" width="8" height="1"/>
+      <rect x="1" y="9" width="10" height="2"/>
+      <rect x="5" y="7" width="2" height="4" fill-opacity="0.4"/>
     </symbol>
     <symbol id="icon-goods" viewBox="0 0 12 12">
       <rect x="2" y="4" width="8" height="6"/>
@@ -573,6 +619,17 @@
       <rect x="5" y="2" width="1" height="5" fill="#3d2c1c"/>
       <rect x="6" y="3" width="4" height="1" fill="#e6dcc0"/>
       <rect x="6" y="5" width="3" height="1" fill="#e6dcc0"/>
+    </symbol>
+    <symbol id="icon-trireme" viewBox="0 0 12 12">
+      <!-- A low, oared native boat — deliberately squat and primitive next
+           to the frigate's taller hull and rigging. -->
+      <rect x="1" y="8" width="10" height="2" fill="#5c3b1e"/>
+      <rect x="1" y="8" width="10" height="1" fill="#7a5230" fill-opacity="0.8"/>
+      <rect x="2" y="10" width="8" height="1" fill="#2c1c10" fill-opacity="0.5"/>
+      <rect x="0" y="9" width="1" height="1" fill="#3d2c1c"/>
+      <rect x="11" y="9" width="1" height="1" fill="#3d2c1c"/>
+      <rect x="5" y="3" width="1" height="5" fill="#3d2c1c"/>
+      <rect x="6" y="3" width="3" height="3" fill="#c9b483"/>
     </symbol>
     <symbol id="icon-carrier" viewBox="0 0 12 12">
       <rect x="1" y="6" width="10" height="2" fill="#5a6068"/>
@@ -628,6 +685,15 @@
       <rect x="2" y="3" width="8" height="1" fill-opacity="0.6"/>
       <rect x="5" y="1" width="2" height="2"/>
     </symbol>
+    <symbol id="icon-antiAir" viewBox="0 0 12 12">
+      <rect x="3" y="9" width="6" height="2"/>
+      <rect x="5" y="6" width="2" height="3"/>
+      <rect x="5" y="1" width="2" height="5" fill-opacity="0.85"/>
+      <rect x="2" y="2" width="2" height="1" fill-opacity="0.6"/>
+      <rect x="8" y="2" width="2" height="1" fill-opacity="0.6"/>
+      <rect x="1" y="4" width="2" height="1" fill-opacity="0.4"/>
+      <rect x="9" y="4" width="2" height="1" fill-opacity="0.4"/>
+    </symbol>
     <symbol id="icon-brave" viewBox="0 0 12 12">
       <rect x="4" y="2" width="2" height="2" fill="#c98a56"/>
       <rect x="3" y="4" width="4" height="4" fill="#a8452f"/>
@@ -680,14 +746,14 @@
   <header>
     <div class="titleblock">
       <div class="eyebrow">Adamito's Game &middot; Phase 1 Vertical Slice</div>
-      <h1>First Reckoning</h1>
+      <h1>The Final War</h1>
       <p class="sub">One map, two factions, the shared roster. Harvest to speed up production, research unlocks the heavier units, and destroying the enemy base ends it.</p>
     </div>
     <div class="hud">
       <div class="hud-stat"><span class="k">Turn</span><span class="v" id="hudTurn">1</span></div>
       <div class="hud-stat player"><span class="k">Your Production</span><span class="v" id="hudPlayerProd">0</span></div>
       <div class="hud-stat player"><span class="k">Your Cities</span><span class="v" id="hudPlayerCities">1</span></div>
-      <div class="hud-stat ai"><span class="k">AI Production</span><span class="v" id="hudAiProd">0</span></div>
+      <div class="hud-stat ai"><span class="k" id="hudAiLabel">AI Production</span><span class="v" id="hudAiProd">0</span></div>
     </div>
   </header>
 
@@ -728,6 +794,14 @@
   <footer class="note">
     v0.2 simplifications, flagged so they don't get mistaken for final design: attacking resolves at range (no move-then-attack sequencing), no fog of war, tech unlocks linearly rather than branching, and production/research accrue at a flat rate rather than population growth. Forest costs 2 movement and gives the defender +2 defense; mountains cost 3 and give +3. The river is naval-only and splits the map except at the ford in the top row — the Frigate starts pre-placed on it since there's no dock/coastal-production mechanic yet to build one from a landlocked base.
   </footer>
+</div>
+
+<div class="result-overlay" id="passDeviceOverlay" hidden>
+  <div class="result-card">
+    <h2 id="passDeviceTitle">Pass the device</h2>
+    <p id="passDeviceBody"></p>
+    <button class="end-turn" id="passDeviceBtn" style="width:auto;padding-inline:24px;">Start Turn</button>
+  </div>
 </div>
 
 <div class="result-overlay" id="resultOverlay" hidden>
@@ -805,12 +879,13 @@
 <div class="menu-overlay" id="homeOverlay">
   <div class="menu-card">
     <div class="home-eyebrow">Adamito's Game &middot; Phase 1</div>
-    <h1 class="home-title">First Reckoning</h1>
-    <p class="home-sub">One map, the shared roster, a reckoning to settle.</p>
+    <h1 class="home-title">The Final War</h1>
+    <p class="home-sub">One map, the shared roster, a final war to settle.</p>
     <button class="menu-btn primary" id="homePlayBtn">Play New Game</button>
     <button class="menu-btn" id="homeLoadBtn">Load Game</button>
     <button class="menu-btn" id="homeHowToBtn">How to Play</button>
     <button class="menu-btn" id="homeHofBtn">Hall of Fame</button>
+    <button class="menu-btn" id="homeMpBtn">Multiplayer</button>
   </div>
 </div>
 
@@ -846,7 +921,7 @@
 <div class="menu-overlay" id="howToPlayOverlay" hidden>
   <div class="menu-card">
     <h2 class="menu-heading">How to Play</h2>
-    <p class="howtoplay-text">You and the AI each start with one city, a Harvester, a Scout, and a Settler on a fogged, procedurally generated island map — every new game reshuffles the terrain, so scout before you commit. Harvesters parked on a goods tile add production; that shared production pool (plus a bonus for every extra city you found) funds your build queue, while research slowly unlocks stronger units and buildings. Move units around the grid and click an enemy unit or base within reach to see a Combat Analysis of damage dealt and taken before you confirm the attack — infantry counters vehicles, vehicles hit hard in the open, artillery is built to crack bases, and flyers ignore terrain entirely. Settlers found new cities on open, non-mountain ground away from existing ones; Frigates, Carriers, and Battleships (built from a coastal Shipyard) ferry land units across water to other islands. Scattered native camps are neutral until a Scout stands next to one — ask for peace to make that camp permanently safe, or strike a war plan (handing over a spare infantry unit as tribute) to turn its garrison into an ally that fights the AI for you. Whoever loses every city loses the game; end your turn with the End Turn button once you've moved, built, and attacked for the round.</p>
+    <p class="howtoplay-text">You and the AI each start with one city, a Harvester, a Scout, and a Settler on a fogged, procedurally generated island map — every new game reshuffles the terrain, so scout before you commit. Harvesters parked on a goods tile add production; that shared production pool (plus a bonus for every extra city you found) funds your build queue, while research slowly unlocks stronger units and buildings. Move units around the grid and click an enemy unit or base within reach to see a Combat Analysis of damage dealt and taken before you confirm the attack — infantry counters vehicles, vehicles hit hard in the open, artillery is built to crack bases, and flyers ignore terrain entirely. Settlers found new cities on open, non-mountain ground away from existing ones; Frigates, Carriers, and Battleships (built from a coastal Shipyard) ferry land units across water to other islands. Scattered native camps are neutral until a Scout stands next to one — ask for peace to make that camp permanently safe, or strike a war plan (handing over a spare infantry unit as tribute) to turn its garrison into an ally that fights the AI for you. Starting turn 30, barbarian landing parties start arriving by Sail Boat and raid everyone — you, the AI, and the natives alike; watch for their Robbers especially, which sneak up to a city, steal one of your researched unlocks, and vanish rather than fight. Whoever loses every city loses the game; end your turn with the End Turn button once you've moved, built, and attacked for the round.</p>
     <button class="menu-btn" id="howToBackBtn">Back</button>
   </div>
 </div>
@@ -859,11 +934,28 @@
   </div>
 </div>
 
+<div class="menu-overlay" id="multiplayerOverlay" hidden>
+  <div class="menu-card">
+    <h2 class="menu-heading">Local Multiplayer</h2>
+    <p class="howtoplay-text" style="margin:0 0 4px;">2 players, one device — pass it over when it's the other player's turn. Online play from separate devices is coming soon.</p>
+    <label class="mp-label">Player 1 name</label>
+    <input type="text" id="mpName1Input" class="mp-input" maxlength="20" placeholder="Player 1">
+    <label class="mp-label">Player 2 name</label>
+    <input type="text" id="mpName2Input" class="mp-input" maxlength="20" placeholder="Player 2">
+    <button class="menu-btn" id="mpDiffBabyBtn">Start &middot; Baby Mode</button>
+    <button class="menu-btn" id="mpDiffMediumBtn">Start &middot; Medium</button>
+    <button class="menu-btn" id="mpDiffHardBtn">Start &middot; Hard</button>
+    <button class="menu-btn" id="mpBackBtn" style="margin-top:6px;">Back</button>
+  </div>
+</div>
+
 <script>
 (function () {
   // ---------- DATA ----------
+  var BUILDER_REPAIR_HP = 3;
   var UNIT_TYPES = {
     harvester: { id: "harvester", name: "Harvester", short: "HV", category: "economy", domain: "land", attack: 4, defense: 1, hp: 8, movement: 2, cost: 4, attackOnly: "infantry", defenseBonusVs: { infantry: 5 }, notes: "Unarmored, but its bulk can run over an adjacent enemy Infantry unit — can't target anything else. Takes very little damage back from the Infantry it tramples; still fragile against everything else." },
+    builder: { id: "builder", name: "Builder", short: "BL", category: "economy", domain: "land", attack: 0, defense: 1, hp: 6, movement: 2, cost: 4, notes: "Unarmed. Sit it next to a damaged friendly city and it repairs " + BUILDER_REPAIR_HP + " HP of that city's walls every turn (never above the city's max HP)." },
     settler: { id: "settler", name: "Settler", short: "ST", category: "economy", domain: "land", attack: 1, defense: 1, hp: 6, movement: 2, cost: 6, cargoSlotCost: 2, canFoundCity: true, notes: "Select it and use Found City on open ground away from existing cities to start a new one — it's consumed in the founding. Takes 2 cargo slots aboard a ship." },
     aiSettler: { id: "aiSettler", name: "Settler", short: "ST", category: "economy", domain: "land", attack: 1, defense: 0, hp: 6, movement: 2, cost: 6, cargoSlotCost: 2, canFoundCity: true, icon: "settler", notes: "The AI's colonizing arm — a bit weaker in defense than yours." },
     scout: { id: "scout", name: "Scout", short: "SC", category: "vehicle", domain: "land", attack: 0, defense: 1, hp: 4, movement: 4, cost: 2 },
@@ -872,7 +964,16 @@
     lightVehicle: { id: "lightVehicle", name: "Light Vehicle", short: "LV", category: "vehicle", domain: "land", attack: 5, defense: 2, hp: 8, movement: 3, cost: 4, attackBonusVs: { infantry: 1.5 } },
     heavyVehicle: { id: "heavyVehicle", name: "Heavy Vehicle", short: "HV2", category: "vehicle", domain: "land", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, attackBonusVs: { infantry: 1.25 } },
     artillery: { id: "artillery", name: "Artillery", short: "AR", category: "siege", domain: "land", attack: 10, defense: 1, hp: 6, movement: 1, cost: 7, attackBonusVs: {} },
-    flyer: { id: "flyer", name: "Ornithopter", short: "OR", category: "air", domain: "land", attack: 5, defense: 2, hp: 7, movement: 5, cost: 9, attackBonusVs: {} },
+    flyer: { id: "flyer", name: "Ornithopter", short: "OR", category: "air", domain: "land", attack: 5, defense: 2, hp: 7, movement: 5, cost: 9, attackBonusVs: {}, notes: "Ignores terrain entirely, ocean included — it never needs a ship to cross water. Any enemy ship (or other unit) adjacent to it can still attack it while it's over open water, same as anywhere else." },
+    // Player-exclusive — see the tech tree's playerOnly flag on the tech
+    // that unlocks it (Guided Missiles) and tickFaction, which refuses to
+    // ever let the AI complete that tech. A flying unit like the Ornithopter
+    // (ignores terrain, ocean included), but a fragile glass cannon: high
+    // attack, thin defense, no counterattack survivability to speak of.
+    // attackTerrainBonus applies only when it's the attacker and only looks
+    // at the TARGET's tile — +50% attack against a unit or city standing on
+    // a mountain (see computeDamage/previewCombat).
+    missile: { id: "missile", name: "Missile", short: "MS", category: "air", domain: "land", attack: 14, defense: 2, hp: 6, movement: 5, cost: 55, attackBonusVs: {}, attackTerrainBonus: { mountain: 0.5 }, oneTimeUse: true, notes: "Player-only. Flies over any terrain, ocean included, same as an Ornithopter. Deals 50% more damage when striking a unit or city that's standing on a mountain. One-time use — it's spent and disappears the instant it attacks, hit or miss, whether the target is a unit, a city, or natives. Immune to Anti-Air Batteries — no enemy city's anti-air defense can shoot it down before it hits." },
     frigate: { id: "frigate", name: "Frigate", short: "FR", category: "naval", domain: "naval", attack: 6, defense: 4, hp: 10, movement: 4, cost: 30, capacity: 3, attackBonusVs: {}, notes: "One is pre-placed per side at the start; after that it's built at a coastal city with a Shipyard. Carries up to 3 cargo slots (a Settler takes 2); if it sinks, everything aboard sinks with it." },
     carrier: { id: "carrier", name: "Carrier", short: "CV", category: "naval", domain: "naval", attack: 2, defense: 7, hp: 16, movement: 3, cost: 40, capacity: 5, attackBonusVs: {}, notes: "Weak offense, but a tough hull built to ferry troops — 5 cargo slots (a Settler takes 2)." },
     battleship: { id: "battleship", name: "Battleship", short: "BB", category: "naval", domain: "naval", attack: 10, defense: 10, hp: 22, movement: 3, cost: 80, capacity: 1, attackBonusVs: {}, notes: "The heaviest warship afloat. Only 1 cargo slot — too tight for a Settler (needs 2)." },
@@ -882,16 +983,52 @@
     brave: { id: "brave", name: "Brave", short: "BR", category: "infantry", domain: "land", attack: 1, defense: 1, hp: 4, movement: 1, cost: 1, attackBonusVs: {}, notes: "Base native unit, unarmed with modern weapons." },
     rocketTubeBrave: { id: "rocketTubeBrave", name: "Rocket Tube Brave", short: "RT", category: "infantry", domain: "land", attack: 4, defense: 4, hp: 6, movement: 1, cost: 3, attackBonusVs: {}, notes: "Brave armed with a rocket tube." },
     mountedRocketTubeBrave: { id: "mountedRocketTubeBrave", name: "Mounted Rocket Tube Brave", short: "MR", category: "infantry", domain: "land", attack: 6, defense: 4, hp: 7, movement: 3, cost: 5, attackBonusVs: {}, notes: "Rocket Tube Brave on horseback — faster, same firepower." },
-    tankBrave: { id: "tankBrave", name: "Indian in Tank", short: "IT", category: "vehicle", domain: "land", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, attackBonusVs: {}, notes: "Native unit crewing a captured tank — same weight class as the colonial Heavy Vehicle." }
+    tankBrave: { id: "tankBrave", name: "Indian in Tank", short: "IT", category: "vehicle", domain: "land", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, attackBonusVs: {}, notes: "Native unit crewing a captured tank — same weight class as the colonial Heavy Vehicle." },
+    trireme: { id: "trireme", name: "Trireme", short: "TR", category: "naval", domain: "naval", attack: 2, defense: 2, hp: 8, movement: 3, cost: 5, capacity: 2, attackBonusVs: {}, notes: "A native boat, crewed from a coastal camp's own garrison. Carries up to 2 cargo slots." },
+    // Barbarian roster — a fourth, fully hostile faction that raids by sea
+    // starting turn 30 (see maybeSpawnBarbarians/runBarbarianTurn). Never
+    // buildable by the player, the AI, or anyone else; these only ever
+    // appear aboard a landing party's own Sail Boat. They reuse existing
+    // icon art (tinted by the barbarian token color) rather than needing
+    // brand new symbols.
+    barbarianLegion: { id: "barbarianLegion", name: "Barbarian Legion", short: "LG", category: "infantry", domain: "land", attack: 3, defense: 3, hp: 6, movement: 1, cost: 1, attackBonusVs: {}, icon: "lightInfantry", notes: "Raider foot soldier, put ashore by a Sail Boat." },
+    barbarianTrike: { id: "barbarianTrike", name: "Barbarian Trike", short: "TK", category: "vehicle", domain: "land", attack: 4, defense: 4, hp: 8, movement: 3, cost: 1, attackBonusVs: {}, icon: "lightVehicle", notes: "Fast raider vehicle, put ashore by a Sail Boat." },
+    barbarianSailboat: { id: "barbarianSailboat", name: "Barbarian Sail Boat", short: "SB", category: "naval", domain: "naval", attack: 2, defense: 3, hp: 8, movement: 3, cost: 5, capacity: 4, attackBonusVs: {}, icon: "trireme", notes: "Carries up to 4 raiders ashore, then keeps raiding the coast on its own." },
+    barbarianRobber: { id: "barbarianRobber", name: "Barbarian Robber", short: "RB", category: "infantry", domain: "land", attack: 1, defense: 2, hp: 3, movement: 2, cost: 1, attackBonusVs: {}, icon: "scout", notes: "Never picks a fight — sneaks up on a city, steals a researched design, and vanishes on the spot." }
   };
   var BASE_STATS = { name: "Base", attack: 0, defense: 5, hp: 20, category: "base" };
   // A native camp fights back on its own — much tougher than an ordinary
   // city, which has no attack of its own and relies entirely on its garrison.
-  var NATIVE_CAMP_STATS = { name: "Native Camp", attack: 10, defense: 10, hp: 20, category: "base" };
+  var NATIVE_CAMP_STATS = { name: "Native Camp", attack: 5, defense: 5, hp: 20, category: "base" };
   var NATIVE_CAMP_MAX = 6; // hard cap on how many native camps ever exist on the map
   // Weighted so most camps are lightly held, with an occasional armed,
   // mounted, or tank-garrisoned camp to keep raiding them risky.
   var NATIVE_GARRISON_POOL = ["brave", "brave", "brave", "rocketTubeBrave", "rocketTubeBrave", "mountedRocketTubeBrave", "tankBrave"];
+
+  // Barbarians start showing up at this turn (and every turn after it —
+  // "and other turns above that level"), rolling BARBARIAN_SPAWN_CHANCE odds
+  // each turn to launch a new landing party, capped so raids never snowball
+  // into more than BARBARIAN_MAX_ACTIVE_BOATS parties in play at once.
+  // Robbers are deliberately rare in the mix — see BARBARIAN_UNIT_POOL.
+  var BARBARIAN_START_TURN = 30;
+  var BARBARIAN_SPAWN_CHANCE = 0.35;
+  var BARBARIAN_MAX_ACTIVE_BOATS = 3;
+  var BARBARIAN_PARTY_MIN = 2;
+  var BARBARIAN_PARTY_MAX = 4;
+  var BARBARIAN_UNIT_POOL = ["barbarianLegion", "barbarianLegion", "barbarianLegion", "barbarianLegion",
+    "barbarianTrike", "barbarianTrike", "barbarianTrike", "barbarianTrike", "barbarianRobber"];
+
+  // Hard mode only: the barbarians get 1-2 actual cities of their own (see
+  // placeBarbarianCities), each much frailer than a real city or a native
+  // camp (8 HP vs. 20), and their economy runs at a fraction of a normal
+  // faction's speed (BARBARIAN_PROD_MULT). They can only ever build a
+  // Shipyard, then Sail Boats — Frigates only unlock if a Robber manages to
+  // steal "frigate" specifically from the player or the AI (see
+  // runBarbarianRobberSteal). They never get Anti-Air, Barracks, or Foundry.
+  var BARBARIAN_CITY_STATS = { name: "Barbarian City", attack: 0, defense: 5, hp: 8, category: "base" };
+  var BARBARIAN_CITY_MAX = 2;
+  var BARBARIAN_PROD_MULT = 0.5;
+  var BARBARIAN_BUILDING_ORDER = ["shipyard"];
 
   function cargoSlotCost(typeId) { return UNIT_TYPES[typeId].cargoSlotCost || 1; }
   // Some unit types (e.g. the AI's aiSettler) reuse another type's icon
@@ -904,17 +1041,24 @@
   var TECHS = [
     { id: "tech1", name: "Armor Piercing", cost: 6, unlocks: ["antiArmorInfantry", "lightVehicle"] },
     { id: "tech2", name: "Heavy Fabrication", cost: 14, unlocks: ["heavyVehicle", "artillery"] },
-    { id: "tech3", name: "Flight", cost: 24, unlocks: ["flyer"] }
+    { id: "tech3", name: "Flight", cost: 24, unlocks: ["flyer"] },
+    // playerOnly: the AI (and, in principle, any other faction that ever ran
+    // through TECHS) never actually completes this tier — see tickFaction,
+    // which stops advancing techIndex here for anyone but the player. Its
+    // research keeps accruing past this point, it just never spends it.
+    { id: "tech4", name: "Guided Missiles", cost: 30, unlocks: ["missile"], playerOnly: true }
   ];
-  var STARTING_UNLOCKS = ["harvester", "scout", "settler", "lightInfantry"];
+  var STARTING_UNLOCKS = ["harvester", "scout", "settler", "lightInfantry", "builder"];
   var MIN_CITY_DISTANCE = 4; // Chebyshev tiles a new city must keep from every existing city
 
+  var ANTI_AIR_DAMAGE = 1;
   var BUILDING_TYPES = {
     barracks: { id: "barracks", name: "Barracks", cost: 10, prodBonus: 2, desc: "+2 production per turn." },
     foundry: { id: "foundry", name: "Foundry", cost: 20, prodBonus: 3, desc: "+3 production per turn." },
-    shipyard: { id: "shipyard", name: "Shipyard", cost: 60, prodBonus: 0, desc: "Unlocks Frigates, Carriers, and Battleships. Requires a coastal city.", grantsUnlocks: ["frigate", "carrier", "battleship"] }
+    shipyard: { id: "shipyard", name: "Shipyard", cost: 60, prodBonus: 0, desc: "Unlocks Frigates, Carriers, and Battleships. Requires a coastal city.", grantsUnlocks: ["frigate", "carrier", "battleship"] },
+    antiAir: { id: "antiAir", name: "Anti-Air Battery", cost: 200, prodBonus: 0, desc: "Every one of your cities automatically fires on any enemy flying unit adjacent to it, every turn, for " + ANTI_AIR_DAMAGE + " damage." }
   };
-  var BUILDING_ORDER = ["barracks", "foundry", "shipyard"];
+  var BUILDING_ORDER = ["barracks", "foundry", "shipyard", "antiAir"];
 
   // ---------- MAP GENERATION ----------
   // A big ocean seeded with several separate islands — a couple of large
@@ -994,10 +1138,10 @@
       return raw ? JSON.parse(raw) : [];
     } catch (e) { return []; }
   }
-  function recordHallOfFame(result) {
+  function recordHallOfFame(result, winnerName) {
     try {
       var arr = loadHallOfFame();
-      arr.unshift({ result: result, turn: state.turn, difficulty: state.difficulty || "medium", date: Date.now() });
+      arr.unshift({ result: result, turn: state.turn, difficulty: state.difficulty || "medium", date: Date.now(), winnerName: winnerName || null });
       if (arr.length > 50) arr.length = 50;
       localStorage.setItem(LS_HOF_KEY, JSON.stringify(arr));
     } catch (e) {}
@@ -1183,6 +1327,7 @@
   }
   function factionHasCoastalCity(f) { return f.bases.some(function (b) { return b.alive && isCoastal(b); }); }
   function moveCost(terrain, domain, category) {
+    if (category === "air") return 1; // Ornithopters ignore terrain entirely, ocean included
     if (domain === "naval") return terrain === "water" ? 1 : Infinity;
     if (terrain === "water") return Infinity;
     if (terrain === "mountain") return 3;
@@ -1205,12 +1350,20 @@
   // category — e.g. the Harvester shrugs off almost all of an Infantry unit's
   // counterattack when it runs one over, while staying fragile to everyone else.
   function defenseBonusVs(d, attackerCat) { return (d.defenseBonusVs && d.defenseBonusVs[attackerCat]) || 0; }
-  function computeDamage(attacker, defender, terrainBonus) {
+  // An attacker-side bonus keyed by the TARGET's own tile terrain (not the
+  // attacker's) — e.g. the Missile hits 50% harder against a unit or city
+  // standing on a mountain. Distinct from defenseBonus(terrain), which is
+  // the defender's own terrain bonus to its defense stat.
+  function attackTerrainMultiplier(attacker, targetTerrain) {
+    return 1 + ((attacker.attackTerrainBonus && attacker.attackTerrainBonus[targetTerrain]) || 0);
+  }
+  function computeDamage(attacker, defender, terrainBonus, targetTerrain) {
     var mult = attackMultiplier(attacker, defender.category);
+    var terrainMult = attackTerrainMultiplier(attacker, targetTerrain);
     var pen = armorPenetration(attacker, defender.category);
     var bonusDef = defenseBonusVs(defender, attacker.category);
     var effDef = Math.max(0, defender.defense + (terrainBonus || 0) + bonusDef - pen);
-    return Math.max(1, Math.round(attacker.attack * mult - effDef));
+    return Math.max(1, Math.round(attacker.attack * mult * terrainMult - effDef));
   }
 
   // ---------- STATE ----------
@@ -1223,31 +1376,51 @@
   function cityLabel(faction, cityObj) {
     var idx = faction.bases.indexOf(cityObj);
     if (cityObj.isCamp) return "Camp " + (idx + 1);
+    if (cityObj.isBarbarianCity) return "Barbarian City " + (idx + 1);
     return idx <= 0 ? "Capital" : "City " + (idx + 1);
   }
   function findCityById(faction, id) {
     for (var i = 0; i < faction.bases.length; i++) if (faction.bases[i].id === id) return faction.bases[i];
     return null;
   }
-  // isCamp switches a founded base over to the tougher native-camp stats
-  // (attack 10 / defense 10) instead of the ordinary player/AI base stats
-  // (attack 0 / defense 5) — a camp fights back on its own, a city doesn't.
-  function makeCity(x, y, isCamp) {
-    var st = isCamp ? NATIVE_CAMP_STATS : BASE_STATS;
-    // pact: null (unmet), "peace" (won't be attacked by the player), or
-    // "war" (peace, plus the camp's garrison actively fights the AI) —
-    // only ever set through a Scout negotiating with a native camp.
-    return { id: "c" + (state.nextCityId++), x: x, y: y, hp: st.hp, maxHp: st.hp, attack: st.attack, defense: st.defense, alive: true, isCamp: !!isCamp, pact: null };
+  // kind switches a founded base over to tougher/frailer stats instead of
+  // the ordinary player/AI base stats (attack 0 / defense 5): "camp" for a
+  // native camp (a camp fights back on its own, a city doesn't), "barbarian"
+  // for a hard-mode barbarian city (much lower HP, otherwise ordinary).
+  function makeCity(x, y, kind, hasInnerArtillery) {
+    var st = kind === "camp" ? NATIVE_CAMP_STATS : (kind === "barbarian" ? BARBARIAN_CITY_STATS : BASE_STATS);
+    // pact / aiPact: null (unmet), "peace" (that side's Scout won't be able
+    // to attack this camp), or "war" (peace, plus the camp's garrison
+    // actively fights the OTHER side) — set only by a Scout negotiating
+    // with the camp, player-side or AI-side respectively.
+    // startledByAi: true once the AI has landed at least one hit on this
+    // camp or its garrison without a war pact — a purely defensive
+    // hostility, independent of any negotiated pact.
+    // hasInnerArtillery: every player city (the starting capital included)
+    // is built with an in-built coastal artillery — see previewCombat and
+    // resolveUnitAttack for what it actually does in combat.
+    return {
+      id: "c" + (state.nextCityId++), x: x, y: y, hp: st.hp, maxHp: st.hp, attack: st.attack, defense: st.defense,
+      alive: true, isCamp: kind === "camp", isBarbarianCity: kind === "barbarian",
+      pact: null, aiPact: null, startledByAi: false, hasInnerArtillery: !!hasInnerArtillery
+    };
   }
-  function foundCity(f, x, y, isCamp) {
-    var c = makeCity(x, y, isCamp);
+  function foundCity(f, x, y, kind) {
+    // Only the player's own ordinary cities (never AI cities, never native
+    // camps, never barbarian cities) are built with the in-built coastal
+    // artillery — except in local hotseat, where the "ai" slot is also a
+    // real human and gets the same bonus, or one of the two humans would
+    // have a permanent, unearned defensive edge over the other.
+    var c = makeCity(x, y, kind, (f.id === "player" || state.hotseat) && !kind);
     f.bases.push(c);
     return c;
   }
   function isValidCitySite(x, y) {
     var terrain = terrainAt(x, y);
     if (terrain === "water" || terrain === "mountain") return false;
-    var all = state.player.bases.concat(state.ai.bases).concat(state.natives ? state.natives.bases : []);
+    var all = state.player.bases.concat(state.ai.bases)
+      .concat(state.natives ? state.natives.bases : [])
+      .concat(state.barbarians ? state.barbarians.bases : []);
     for (var i = 0; i < all.length; i++) {
       if (all[i].alive && chebyshev([x, y], [all[i].x, all[i].y]) < MIN_CITY_DISTANCE) return false;
     }
@@ -1262,7 +1435,12 @@
     return {
       id: id, isAI: isAI, bases: [],
       units: [], production: 0, research: 0, unlocked: unlocked,
-      techIndex: 0, buildQueue: [], buildings: []
+      techIndex: 0, buildQueue: [], buildings: [],
+      // Only ever set for a local-hotseat human seat (see startHotseatGame) —
+      // lives on the faction object itself so it travels automatically with
+      // whichever human owns this data when swapHotseatSeats swaps who's
+      // sitting in the "player" vs "ai" slot.
+      displayName: null
     };
   }
 
@@ -1273,6 +1451,15 @@
   // only ever fight back when something attacks them.
   function makeNativesFaction() {
     return { id: "natives", isAI: false, bases: [], units: [], production: 0, research: 0, unlocked: [], techIndex: 0, buildQueue: [], buildings: [] };
+  }
+
+  // The barbarians are a fifth-wheel, fully hostile faction: no cities, no
+  // production, no tech — they only ever exist as raiding units placed by
+  // maybeSpawnBarbarians, and they act each turn via runBarbarianTurn. Kept
+  // shaped like makeNativesFaction so the many generic faction-shaped helpers
+  // (factionOf, unitAt, removeUnit, etc.) work on them without special-casing.
+  function makeBarbariansFaction() {
+    return { id: "barbarians", isAI: false, bases: [], units: [], production: 0, research: 0, unlocked: [], techIndex: 0, buildQueue: [], buildings: [] };
   }
 
   // Scatters up to NATIVE_CAMP_MAX native camps across whatever open,
@@ -1297,7 +1484,7 @@
       // camps placed earlier in this same loop (their distance now matters
       // too) before committing this one.
       if (!isValidCitySite(spot[0], spot[1])) continue;
-      var camp = foundCity(natives, spot[0], spot[1], true);
+      var camp = foundCity(natives, spot[0], spot[1], "camp");
       var garrisonSize = 1 + (Math.random() < 0.5 ? 1 : 0);
       for (var g = 0; g < garrisonSize; g++) {
         var spawn = findSpawnTile(spot[0], spot[1], "land");
@@ -1305,19 +1492,57 @@
         var pick = NATIVE_GARRISON_POOL[Math.floor(Math.random() * NATIVE_GARRISON_POOL.length)];
         var garrisonUnit = newUnit(pick, "natives", spawn[0], spawn[1]);
         // Ties this unit back to its camp, so negotiating peace or a war
-        // plan with the camp (see negotiateCamp) covers its garrison too.
+        // plan with the camp (see askForPeace/proposeWarPlan) covers its
+        // garrison too.
         garrisonUnit.campId = camp.id;
         garrisonUnit.atWar = false;
         natives.units.push(garrisonUnit);
       }
+      // A coastal camp has even odds of also crewing a Trireme — same
+      // campId as the land garrison, so it's covered by the same peace/war
+      // pact and counts toward the same startled-into-war hostility.
+      if (isCoastal(camp) && Math.random() < 0.5) {
+        var boatSpawn = findSpawnTile(spot[0], spot[1], "naval");
+        if (boatSpawn) {
+          var boatUnit = newUnit("trireme", "natives", boatSpawn[0], boatSpawn[1]);
+          boatUnit.campId = camp.id;
+          boatUnit.atWar = false;
+          natives.units.push(boatUnit);
+        }
+      }
+    }
+  }
+
+  // Hard mode only: gives the barbarians 1-2 actual cities of their own, so
+  // they can run a (deliberately weak and slow) economy alongside the
+  // periodic raiding parties every difficulty gets from maybeSpawnBarbarians.
+  // Never called for Baby Mode or Medium — see newGame.
+  function placeBarbarianCities() {
+    var candidates = [];
+    for (var y = 0; y < ROWS; y++) {
+      for (var x = 0; x < COLS; x++) {
+        if (isValidCitySite(x, y) && !unitAt(x, y) && !baseAt(x, y)) candidates.push([x, y]);
+      }
+    }
+    candidates = shuffled(candidates);
+    var target = Math.min(BARBARIAN_CITY_MAX, candidates.length, 1 + Math.floor(Math.random() * BARBARIAN_CITY_MAX));
+    for (var i = 0; i < target; i++) {
+      var spot = candidates[i];
+      // Re-check against any barbarian city already placed earlier in this
+      // same loop, exactly like placeNativeCamps does for camps.
+      if (!isValidCitySite(spot[0], spot[1])) continue;
+      foundCity(state.barbarians, spot[0], spot[1], "barbarian");
     }
   }
 
   // ---------- NATIVE DIPLOMACY ----------
-  // A Scout standing next to a still-unmet camp can ask for peace (free —
-  // the camp and its garrison stop being valid targets for the player) or
-  // propose a war plan against the AI (costs one weak unit as tribute, but
-  // the camp's garrison then actively fights the AI for you).
+  // A Scout — the player's or the AI's — standing next to a still-unmet
+  // camp can ask for peace (free — the camp and its garrison stop being
+  // valid targets for that side) or propose a war plan against the OTHER
+  // side (costs one weak unit as tribute from whichever side is asking, but
+  // the camp's garrison then actively fights that side's enemy for them).
+  // A camp can only ever be allied with one side's war plan at a time —
+  // negotiatingSide() below is what enforces that.
   var TRIBUTE_ELIGIBLE = ["lightInfantry", "antiArmorInfantry"]; // "an infantry unit or something weak" — never a ship
 
   function campById(id) {
@@ -1329,6 +1554,19 @@
   function isAtPeaceWithPlayer(campId) {
     var c = campById(campId);
     return !!c && !!c.pact;
+  }
+  // Symmetric to isAtPeaceWithPlayer, but for the AI — used to keep the AI
+  // from targeting a camp it's made peace (or a war pact) with.
+  function isAtPeaceWithAi(campId) {
+    var c = campById(campId);
+    return !!c && !!c.aiPact;
+  }
+  // A camp that already has a live war pact with one side, or that's been
+  // startled into defensive hostility against the AI, won't hear out the
+  // other side's Scout at all.
+  function campWillNegotiateWith(camp, side) {
+    if (side === "player") return camp.aiPact !== "war";
+    return camp.pact !== "war" && !camp.startledByAi;
   }
   // The living native camp (if any) adjacent to a unit's own tile.
   function adjacentNativeCamp(u) {
@@ -1349,14 +1587,14 @@
     return state.natives.units.filter(function (u) { return u.campId === camp.id; });
   }
   function askForPeace(scoutUnit, camp) {
-    if (camp.pact) return;
+    if (camp.pact || !campWillNegotiateWith(camp, "player")) return;
     camp.pact = "peace";
     addLog("You make peace with the natives' " + cityLabel(state.natives, camp) + ".");
     scoutUnit.acted = true;
     state.selectedUnitId = null;
   }
   function proposeWarPlan(scoutUnit, camp) {
-    if (camp.pact === "war") return;
+    if (camp.pact === "war" || !campWillNegotiateWith(camp, "player")) return;
     var tribute = findTributeUnit(state.player);
     if (!tribute) {
       addLog("No weak unit (Infantry) available to offer as tribute.");
@@ -1369,10 +1607,53 @@
     scoutUnit.acted = true;
     state.selectedUnitId = null;
   }
+  // AI-side mirrors of askForPeace/proposeWarPlan. No UI to drive them —
+  // called from runAiTurn against the AI's own Scout(s).
+  function aiAskForPeace(scoutUnit, camp) {
+    if (camp.aiPact || !campWillNegotiateWith(camp, "ai")) return false;
+    camp.aiPact = "peace";
+    addLog("The AI makes peace with the natives' " + cityLabel(state.natives, camp) + ".");
+    scoutUnit.acted = true;
+    return true;
+  }
+  function aiProposeWarPlan(scoutUnit, camp) {
+    if (camp.aiPact === "war" || !campWillNegotiateWith(camp, "ai")) return false;
+    var tribute = findTributeUnit(state.ai);
+    if (!tribute) return false;
+    removeUnit(tribute);
+    camp.aiPact = "war";
+    campGarrison(camp).forEach(function (u) { u.atWarVsPlayer = true; });
+    addLog("The AI strikes a war plan with the natives' " + cityLabel(state.natives, camp) + " against you, handing over a " + UNIT_TYPES[tribute.typeId].name + " as tribute.");
+    scoutUnit.acted = true;
+    return true;
+  }
+  // Called whenever the AI's attack actually lands on a native unit or base
+  // that hadn't already allied with the AI — one hit is enough to startle
+  // that camp's whole garrison into permanent defensive hostility against
+  // the AI, independent of any negotiated pact.
+  function startleCampAgainstAi(camp) {
+    if (!camp || camp.startledByAi || camp.aiPact === "war") return;
+    camp.startledByAi = true;
+    addLog("The natives' " + cityLabel(state.natives, camp) + " are startled into war against the AI.");
+  }
 
-  function nearestAiTarget(u) {
-    var candidates = state.ai.units.map(function (e) { return [e.x, e.y]; });
-    state.ai.bases.forEach(function (b) { if (b.alive) candidates.push([b.x, b.y]); });
+  // Nearest living camp the AI hasn't yet settled anything with — used to
+  // give the AI's Scout somewhere to actually walk toward, the same way a
+  // player would explore toward one.
+  function nearestUnnegotiatedCampForAi(u) {
+    var best = null, bestD = Infinity;
+    state.natives.bases.forEach(function (c) {
+      if (!c.alive || c.aiPact !== null || !campWillNegotiateWith(c, "ai")) return;
+      var d = Math.abs(c.x - u.x) + Math.abs(c.y - u.y);
+      if (d < bestD) { bestD = d; best = c; }
+    });
+    return best;
+  }
+
+  function nearestFactionTarget(u, factionId) {
+    var f = factionOf(factionId);
+    var candidates = f.units.map(function (e) { return [e.x, e.y]; });
+    f.bases.forEach(function (b) { if (b.alive) candidates.push([b.x, b.y]); });
     var best = null, bestD = Infinity;
     candidates.forEach(function (c) {
       var d = Math.abs(c[0] - u.x) + Math.abs(c[1] - u.y);
@@ -1381,28 +1662,259 @@
     return best;
   }
 
-  // Only a war-pact camp's garrison ever acts on its own, and only ever
-  // against the AI — peace-only and un-negotiated natives stay fully
-  // passive, as before.
+  // A garrison unit acts on its own only once its camp has a live reason to
+  // fight someone: a player-struck war pact or AI-startled hostility means
+  // it hunts the AI; an AI-struck war pact means it hunts the player.
+  // Peace-only and fully un-negotiated natives stay passive, as before.
   function runNativesTurn() {
     state.natives.units.forEach(function (u) { u.acted = false; });
     state.natives.units.slice().forEach(function (u) {
-      if (u.hp <= 0 || !u.atWar) return;
+      if (u.hp <= 0) return;
+      var camp = u.campId ? campById(u.campId) : null;
+      var huntsAi = u.atWar || (camp && camp.startledByAi);
+      var huntsPlayer = !!u.atWarVsPlayer;
+      if (!huntsAi && !huntsPlayer) return;
+      // A unit hostile to both sides at once (theoretically possible only
+      // if it were startled while also AI-war-pacted, which
+      // campWillNegotiateWith prevents) prefers whichever enemy is closer.
+      var targetFactionId = huntsAi && huntsPlayer
+        ? (function () {
+            var da = nearestFactionTarget(u, "ai");
+            var dp = nearestFactionTarget(u, "player");
+            if (!da) return "player";
+            if (!dp) return "ai";
+            var distTo = function (t) { return Math.abs(t[0] - u.x) + Math.abs(t[1] - u.y); };
+            return distTo(da) <= distTo(dp) ? "ai" : "player";
+          })()
+        : (huntsAi ? "ai" : "player");
+
       var reachable = reachableTiles(u);
       var attackable = attackableTiles(u, reachable).filter(function (t) {
         var eu = unitAt(t[0], t[1]);
         var eb = baseAt(t[0], t[1]);
-        return (eu && eu.owner === "ai") || (eb && eb.id === "ai");
+        return (eu && eu.owner === targetFactionId) || (eb && eb.id === targetFactionId);
       });
       if (attackable.length) {
         var t = pickWeakestTarget(attackable);
         resolveUnitAttack(u, t[0], t[1]);
         return;
       }
-      var target = nearestAiTarget(u);
+      var target = nearestFactionTarget(u, targetFactionId);
       if (target) moveToward(u, target[0], target[1]);
       u.acted = true;
     });
+  }
+
+  // ---------- BARBARIANS ----------
+  // Of the player, the AI, and the natives, whichever has the closest unit
+  // or living base to u — used both to steer a raider on foot and to steer a
+  // loaded Sail Boat toward whichever shore is nearest trouble.
+  function nearestHostileTarget(u) {
+    var factionIds = ["player", "ai", "natives"];
+    var best = null, bestD = Infinity, bestFaction = null;
+    factionIds.forEach(function (fid) {
+      var t = nearestFactionTarget(u, fid);
+      if (!t) return;
+      var d = Math.abs(t[0] - u.x) + Math.abs(t[1] - u.y);
+      if (d < bestD) { bestD = d; best = t; bestFaction = fid; }
+    });
+    return best ? { tile: best, factionId: bestFaction } : null;
+  }
+
+  // Only the player's and the AI's cities hold anything worth stealing — the
+  // natives have no tech tree — so a Robber only ever targets those two.
+  function nearestStealableCity(u) {
+    var best = null, bestD = Infinity;
+    [state.player, state.ai].forEach(function (f) {
+      f.bases.forEach(function (b) {
+        if (!b.alive) return;
+        var d = Math.abs(b.x - u.x) + Math.abs(b.y - u.y);
+        if (d < bestD) { bestD = d; best = b; }
+      });
+    });
+    return best;
+  }
+  function adjacentStealableCity(u) {
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var i = 0; i < dirs.length; i++) {
+      var b = baseAt(u.x + dirs[i][0], u.y + dirs[i][1]);
+      if (b && (b.id === "player" || b.id === "ai") && b.base.alive) return b;
+    }
+    return null;
+  }
+  // A researched unlock is only "stealable" if it was actually earned via
+  // tech or a building, not one of the free units every faction starts with.
+  function stealableUnlocks(f) {
+    return f.unlocked.filter(function (id) {
+      return STARTING_UNLOCKS.indexOf(id) === -1 && id !== "aiSettler";
+    });
+  }
+  // Sneaks in, takes one random earned unlock away from the victim faction
+  // for good, hands the barbarians that same design (this is how a hard-mode
+  // Barbarian City ever gets to build a Frigate — see tickBarbarianEconomy),
+  // and instantly disappears — returns false (and does nothing) if that
+  // city's owner has nothing worth stealing yet.
+  function runBarbarianRobberSteal(robberUnit, targetBaseInfo) {
+    var f = targetBaseInfo.faction;
+    var pool = stealableUnlocks(f);
+    if (!pool.length) return false;
+    var stolenId = pool[Math.floor(Math.random() * pool.length)];
+    f.unlocked = f.unlocked.filter(function (id) { return id !== stolenId; });
+    if (state.barbarians.unlocked.indexOf(stolenId) === -1) state.barbarians.unlocked.push(stolenId);
+    var label = cityLabel(f, targetBaseInfo.base);
+    addLog("A Barbarian Robber sneaks into " + possessiveLabel(targetBaseInfo.id) + " " + label +
+      " and steals the plans for the " + UNIT_TYPES[stolenId].name + "! " +
+      (targetBaseInfo.id === "player" ? "You" : "The AI") + " can no longer build it, and the barbarians can now build it themselves.", false);
+    removeUnit(robberUnit);
+    return true;
+  }
+
+  // Barbarians never build or research anything — this is their entire turn.
+  // Loaded Sail Boats make for the nearest hostile shore and unload; empty
+  // ones fight like any other unit (they have their own attack/defense).
+  // Robbers never initiate combat — they beeline for the nearest player/AI
+  // city, sneak in and steal the moment they're adjacent to one, and vanish.
+  // Every other raider (Legion, Trike) attacks the player, the AI, and the
+  // natives alike, exactly like a native garrison hunting an enemy.
+  function runBarbarianTurn() {
+    state.barbarians.units.forEach(function (u) { u.acted = false; });
+    state.barbarians.units.slice().forEach(function (u) {
+      if (u.hp <= 0 || u.acted) return;
+      var type = UNIT_TYPES[u.typeId];
+
+      if (type.domain === "naval" && u.cargo.length) {
+        var landingTiles = findAllDisembarkTiles(u);
+        if (landingTiles.length) {
+          while (u.cargo.length) {
+            var tiles = findAllDisembarkTiles(u);
+            if (!tiles.length) break;
+            disembarkUnitAt(u, 0, tiles[0][0], tiles[0][1]);
+          }
+          u.acted = true;
+          return;
+        }
+        var dest = nearestHostileTarget(u);
+        if (dest) moveToward(u, dest.tile[0], dest.tile[1]);
+        u.acted = true;
+        return;
+      }
+
+      if (u.typeId === "barbarianRobber") {
+        var stealTarget = adjacentStealableCity(u);
+        if (stealTarget && runBarbarianRobberSteal(u, stealTarget)) return;
+        var cityTarget = nearestStealableCity(u);
+        if (cityTarget) moveToward(u, cityTarget.x, cityTarget.y);
+        u.acted = true;
+        return;
+      }
+
+      if (type.attack > 0) {
+        var reachable = reachableTiles(u);
+        var attackable = attackableTiles(u, reachable);
+        if (attackable.length) {
+          var t = pickWeakestTarget(attackable);
+          resolveUnitAttack(u, t[0], t[1]);
+          return;
+        }
+        var hostile = nearestHostileTarget(u);
+        var beforeX = u.x, beforeY = u.y;
+        if (hostile) moveToward(u, hostile.tile[0], hostile.tile[1]);
+        // moveToward only steps when it strictly shortens the distance, so a
+        // raider that's boxed in by the map (or already at its nearest
+        // reachable approach) would otherwise camp in the same spot forever.
+        // For a Sail Boat that means permanently jamming the one water tile
+        // its own Barbarian City needs to launch the next one — so a raider
+        // that made no progress wanders to a random reachable tile instead,
+        // keeping the coast clear rather than standing still.
+        if (u.x === beforeX && u.y === beforeY && reachable.length) {
+          var wander = reachable[Math.floor(Math.random() * reachable.length)];
+          u.x = wander[0]; u.y = wander[1];
+        }
+      }
+      u.acted = true;
+    });
+  }
+
+  // Rolls the odds of a new landing party once turn 30 is reached, capped so
+  // no more than BARBARIAN_MAX_ACTIVE_BOATS Sail Boats are ever at sea at
+  // once. Anchors on a random living player/AI city (preferring a coastal
+  // one) and drops a loaded Sail Boat on nearby open water.
+  function maybeSpawnBarbarians() {
+    if (state.turn < BARBARIAN_START_TURN) return;
+    var activeBoats = state.barbarians.units.filter(function (u) { return UNIT_TYPES[u.typeId].domain === "naval"; });
+    if (activeBoats.length >= BARBARIAN_MAX_ACTIVE_BOATS) return;
+    if (Math.random() >= BARBARIAN_SPAWN_CHANCE) return;
+
+    var targets = [state.player, state.ai].filter(factionAlive);
+    if (!targets.length) return;
+    var targetFaction = targets[Math.floor(Math.random() * targets.length)];
+    var aliveCities = targetFaction.bases.filter(function (b) { return b.alive; });
+    if (!aliveCities.length) return;
+    var coastalCities = aliveCities.filter(isCoastal);
+    var anchor = (coastalCities.length ? coastalCities : aliveCities)[Math.floor(Math.random() * (coastalCities.length ? coastalCities.length : aliveCities.length))];
+
+    var waterSpots = bfsFindTiles(anchor.x, anchor.y, function (x, y) {
+      return terrainAt(x, y) === "water" && !unitAt(x, y);
+    }, 6);
+    if (!waterSpots.length) return;
+    var spot = waterSpots[Math.floor(Math.random() * waterSpots.length)];
+
+    var boat = newUnit("barbarianSailboat", "barbarians", spot[0], spot[1]);
+    var partySize = BARBARIAN_PARTY_MIN + Math.floor(Math.random() * (BARBARIAN_PARTY_MAX - BARBARIAN_PARTY_MIN + 1));
+    for (var i = 0; i < partySize; i++) {
+      var pickId = BARBARIAN_UNIT_POOL[Math.floor(Math.random() * BARBARIAN_UNIT_POOL.length)];
+      boat.cargo.push(newUnit(pickId, "barbarians", spot[0], spot[1]));
+    }
+    state.barbarians.units.push(boat);
+    addLog("Barbarians have been sighted! A raiding party sails toward " +
+      (targetFaction.id === "player" ? "your" : "the AI's") + " shores.", false);
+  }
+
+  // Hard mode only: runs a (deliberately weak) economy for any Barbarian
+  // Cities placed by placeBarbarianCities — a no-op in Baby Mode and Medium,
+  // where state.barbarians.bases is always empty. Production accrues at
+  // BARBARIAN_PROD_MULT of a normal faction's rate, and the build queue is
+  // hardcoded rather than player-chosen: a Shipyard first (needs a coastal
+  // city, same rule as the player/AI), then Sail Boats forever after — plus
+  // occasional Frigates once a Robber has stolen "frigate" from someone (see
+  // runBarbarianRobberSteal). Never Anti-Air, Barracks, or Foundry.
+  function tickBarbarianEconomy() {
+    var f = state.barbarians;
+    if (!factionAlive(f)) return;
+    var pb = productionBreakdown(f);
+    f.production += Math.round(pb.total * BARBARIAN_PROD_MULT);
+
+    if (!f.buildQueue.length) {
+      if (f.buildings.indexOf("shipyard") === -1) {
+        if (factionHasCoastalCity(f)) f.buildQueue.push({ kind: "building", id: "shipyard" });
+      } else {
+        var canFrigate = f.unlocked.indexOf("frigate") !== -1;
+        var pickId = (canFrigate && Math.random() < 0.3) ? "frigate" : "barbarianSailboat";
+        f.buildQueue.push({ kind: "unit", id: pickId });
+      }
+    }
+
+    if (f.buildQueue.length) {
+      var qitem = f.buildQueue[0];
+      var qtype = queueItemType(qitem);
+      if (f.production >= qtype.cost) {
+        if (qitem.kind === "building") {
+          f.production -= qtype.cost;
+          if (f.buildings.indexOf(qitem.id) === -1) f.buildings.push(qitem.id);
+          addLog("A Barbarian City completes a " + qtype.name + ".", false);
+          f.buildQueue.shift();
+        } else {
+          var domain = qtype.domain || "land";
+          var spot = findSpawnTileForFaction(f, domain, null);
+          if (spot) {
+            f.production -= qtype.cost;
+            f.units.push(newUnit(qitem.id, "barbarians", spot[0], spot[1]));
+            addLog("A Barbarian City launches a new " + qtype.name + ".", false);
+            f.buildQueue.shift();
+          }
+        }
+      }
+    }
   }
 
   // { base: flat rate, harvest: bonus from a harvester on a goods tile,
@@ -1461,7 +1973,7 @@
     if (waterSpots.length) f.units.push(newUnit("frigate", f.id, waterSpots[0][0], waterSpots[0][1]));
   }
 
-  function newGame(difficulty) {
+  function newGame(difficulty, hotseat) {
     var map = generateMap();
     TERRAIN_GRID = map.terrain;
     RESOURCE_GRID = map.resource;
@@ -1471,15 +1983,24 @@
     state = {
       turn: 1, nextUnitId: 1, nextCityId: 1, over: false, winner: null, hofRecorded: false,
       difficulty: difficulty || (state && state.difficulty) || "medium",
-      selectedUnitId: null, selectedBaseId: null, log: []
+      selectedUnitId: null, selectedBaseId: null, pendingDisembark: null, log: [],
+      // Local hotseat multiplayer: hotseat is on/off for the whole game;
+      // hotseatSecondTurn tracks which of the two humans' sub-turns within
+      // the current round is in progress (see the End Turn handler and
+      // swapHotseatSeats). Set up front (not after newGame returns) so that
+      // foundCity, called below for both starting capitals, already sees
+      // it and gives both humans the same coastal-artillery bonus.
+      hotseat: !!hotseat, hotseatSecondTurn: false
     };
     state.player = makeFaction("player", false);
     state.ai = makeFaction("ai", true);
     state.natives = makeNativesFaction();
+    state.barbarians = makeBarbariansFaction();
 
-    var explored = [];
-    for (var y = 0; y < ROWS; y++) explored.push(new Array(COLS).fill(false));
-    state.player.explored = explored;
+    state.player.explored = makeVisionGrid();
+    state.player.visible = makeVisionGrid();
+    state.ai.explored = makeVisionGrid();
+    state.ai.visible = makeVisionGrid();
 
     foundCity(state.player, map.playerCapital[0], map.playerCapital[1]);
     foundCity(state.ai, map.aiCapital[0], map.aiCapital[1]);
@@ -1490,6 +2011,10 @@
     // Camps go last, once the capitals (and the distance they keep other
     // sites away from) are settled.
     placeNativeCamps(state.natives);
+    // Barbarian cities are a hard-mode-only feature — Baby Mode and Medium
+    // never get them, only the periodic raiding parties every difficulty
+    // shares (see maybeSpawnBarbarians).
+    if (state.difficulty === "hard") placeBarbarianCities();
 
     updateFogOfWar();
 
@@ -1499,24 +2024,92 @@
     render();
   }
 
-  // Unexplored tiles render as fog until something friendly comes within
-  // sight. Reveal is permanent (no re-hiding) — a light-touch fog model,
-  // not a full "currently visible vs. previously seen" system.
-  function revealAround(cx, cy, r) {
+  // Starts a local, same-device, 2-human hotseat game: an ordinary newGame
+  // plus the hotseat flag and each seat's display name (which lives on the
+  // faction object itself, see makeFaction, so it travels with that human
+  // when swapHotseatSeats swaps who occupies the "player"/"ai" slot).
+  function startHotseatGame(name1, name2, difficulty) {
+    newGame(difficulty, true);
+    state.player.displayName = (name1 || "Player 1").trim().slice(0, 20) || "Player 1";
+    state.ai.displayName = (name2 || "Player 2").trim().slice(0, 20) || "Player 2";
+  }
+
+  // Swaps which human's data currently occupies the "player" slot (the one
+  // every piece of UI, input handling, and fog-of-war renders as "you") and
+  // the "ai" slot (rendered as the opponent) — see the long comment at
+  // factionOf for why this is safe: every other part of the engine already
+  // treats "player"/"ai" purely as faction-object slots, not fixed human
+  // identities, so re-pointing state.player/state.ai is enough to hand
+  // control to the other human with zero changes anywhere else. Only data
+  // that's stored OUTSIDE the faction object as a literal "player"/"ai"
+  // string has to be fixed up by hand here:
+  //  - unit.owner (units live in f.units, but still carry their owner's id)
+  //  - native camp pact/aiPact and native unit atWar/atWarVsPlayer, which
+  //    track each camp's relationship with "whichever human is in the
+  //    player slot" / "...the ai slot" — exactly the same slot-scoped
+  //    relationship that needs to follow its human when the humans swap.
+  // (camp.startledByAi is left as-is: it has no "startledByPlayer" twin, so
+  // it's the one small, intentionally-accepted inconsistency here — a camp
+  // startled against whoever was in the "ai" slot stays hostile to whoever
+  // is in that slot next, rather than following the specific human. Minor
+  // and rare enough not to be worth a new field for.)
+  function swapHotseatSeats() {
+    var tmp = state.player;
+    state.player = state.ai;
+    state.ai = tmp;
+    state.player.id = "player";
+    state.ai.id = "ai";
+    state.player.units.forEach(function (u) { u.owner = "player"; });
+    state.ai.units.forEach(function (u) { u.owner = "ai"; });
+    state.natives.bases.forEach(function (c) {
+      var p = c.pact; c.pact = c.aiPact; c.aiPact = p;
+    });
+    state.natives.units.forEach(function (u) {
+      var w = !!u.atWar, wv = !!u.atWarVsPlayer;
+      u.atWar = wv; u.atWarVsPlayer = w;
+    });
+    state.selectedUnitId = null;
+    state.selectedBaseId = null;
+    state.pendingDisembark = null;
+  }
+
+  function makeVisionGrid() {
+    var grid = [];
+    for (var y = 0; y < ROWS; y++) grid.push(new Array(COLS).fill(false));
+    return grid;
+  }
+
+  // Real fog of war, per faction: "explored" is permanent (terrain, once
+  // seen, is never forgotten — it just renders as remembered rather than
+  // pitch black), while "visible" is recomputed fresh every call and only
+  // ever true for tiles currently within sight of one of that faction's
+  // own units or cities. Units/bases only ever show up on tiles that are
+  // BOTH explored and currently visible (see renderBoard and the fog-aware
+  // combat/targeting checks), so a faction can lose track of an enemy the
+  // moment it looks away — the AI genuinely can't see the player (or vice
+  // versa) until one of its own units or cities re-establishes sight.
+  function revealAround(f, cx, cy, r) {
     for (var dy = -r; dy <= r; dy++) {
       for (var dx = -r; dx <= r; dx++) {
         var x = cx + dx, y = cy + dy;
-        if (inBoundsRaw(x, y)) state.player.explored[y][x] = true;
+        if (!inBoundsRaw(x, y)) continue;
+        f.explored[y][x] = true;
+        f.visible[y][x] = true;
       }
     }
   }
+  function updateVisionFor(f) {
+    f.visible = makeVisionGrid();
+    f.units.forEach(function (u) {
+      revealAround(f, u.x, u.y, u.typeId === "scout" ? 3 : 1);
+    });
+    f.bases.forEach(function (b) {
+      if (b.alive) revealAround(f, b.x, b.y, 2);
+    });
+  }
   function updateFogOfWar() {
-    state.player.units.forEach(function (u) {
-      revealAround(u.x, u.y, u.typeId === "scout" ? 3 : 1);
-    });
-    state.player.bases.forEach(function (b) {
-      if (b.alive) revealAround(b.x, b.y, 2);
-    });
+    updateVisionFor(state.player);
+    updateVisionFor(state.ai);
   }
 
   function addLog(text, isWin) {
@@ -1528,11 +2121,11 @@
   // never take a faction id of "player" or "ai" themselves, so anything
   // keyed strictly off those two ids (enemyOf, the AI's build queue, etc.)
   // correctly never targets or acts as them.
-  function factionOf(id) { return id === "player" ? state.player : (id === "ai" ? state.ai : state.natives); }
+  function factionOf(id) { return id === "player" ? state.player : (id === "ai" ? state.ai : (id === "barbarians" ? state.barbarians : state.natives)); }
   function enemyOf(id) { return id === "player" ? state.ai : state.player; }
 
   function unitAt(x, y) {
-    var all = state.player.units.concat(state.ai.units).concat(state.natives.units);
+    var all = state.player.units.concat(state.ai.units).concat(state.natives.units).concat(state.barbarians.units);
     for (var i = 0; i < all.length; i++) if (all[i].x === x && all[i].y === y && all[i].hp > 0) return all[i];
     return null;
   }
@@ -1549,6 +2142,10 @@
     for (i = 0; i < state.natives.bases.length; i++) {
       var nb = state.natives.bases[i];
       if (nb.alive && nb.x === x && nb.y === y) return { id: "natives", base: nb, faction: state.natives };
+    }
+    for (i = 0; i < state.barbarians.bases.length; i++) {
+      var bb = state.barbarians.bases[i];
+      if (bb.alive && bb.x === x && bb.y === y) return { id: "barbarians", base: bb, faction: state.barbarians };
     }
     return null;
   }
@@ -1575,7 +2172,18 @@
           var cost = moveCost(terrainAt(nx, ny), domain, unitType.category);
           if (!isFinite(cost)) return;
           var nd = d + cost;
-          if (nd > movement) return;
+          // Mountains (cost 3) are meant to be a defense/attack perch, not a
+          // tile only fast units can ever set foot on — a unit stepping
+          // directly off its own tile (d === 0) can always afford one step,
+          // even a costly one, same as any other 4X's "at least one move"
+          // rule; it just spends the rest of that turn's movement getting
+          // there. Only the very first step of the turn gets this exception,
+          // so a unit already mid-move still can't chain through terrain it
+          // can't afford.
+          if (nd > movement) {
+            if (d === 0) nd = movement;
+            else return;
+          }
           var k = key(nx, ny);
           if (dist.hasOwnProperty(k) && dist[k] <= nd) return;
           if (unitAt(nx, ny) || baseAt(nx, ny)) return;
@@ -1594,6 +2202,11 @@
   function attackableTiles(unit, reachable) {
     var type = UNIT_TYPES[unit.typeId];
     if (!type.attack) return [];
+    // Natives have no fog of war of their own (they act on full knowledge,
+    // unchanged); the player and the AI each only see what's currently
+    // within their own vision, so a target hidden in fog can't be targeted
+    // even if it happens to be adjacent to a reachable tile.
+    var visGrid = factionOf(unit.owner).visible;
     var frontier = reachable.concat([[unit.x, unit.y]]);
     var found = {};
     var out = [];
@@ -1602,20 +2215,22 @@
       dirs.forEach(function (d) {
         var nx = t[0] + d[0], ny = t[1] + d[1];
         if (!inBounds(nx, ny)) return;
+        if (visGrid && !visGrid[ny][nx]) return;
         var k = key(nx, ny);
         if (found[k]) return;
         var eu = unitAt(nx, ny);
         var eb = baseAt(nx, ny);
         if (eu && eu.owner !== unit.owner) {
           if (type.attackOnly && UNIT_TYPES[eu.typeId].category !== type.attackOnly) return;
-          // A camp the player has made peace (or a war pact) with, and its
-          // garrison, are off-limits to the player specifically — the AI
-          // can still fight them, and they can still fight the AI.
+          // A camp either side has made peace (or a war pact) with, and its
+          // garrison, are off-limits to that side specifically.
           if (unit.owner === "player" && eu.owner === "natives" && isAtPeaceWithPlayer(eu.campId)) return;
+          if (unit.owner === "ai" && eu.owner === "natives" && isAtPeaceWithAi(eu.campId)) return;
           found[k] = true; out.push([nx, ny]);
         } else if (eb && eb.id !== unit.owner) {
           if (type.attackOnly) return; // e.g. the Harvester can't run over a base
           if (unit.owner === "player" && eb.id === "natives" && isAtPeaceWithPlayer(eb.base.id)) return;
+          if (unit.owner === "ai" && eb.id === "natives" && isAtPeaceWithAi(eb.base.id)) return;
           found[k] = true; out.push([nx, ny]);
         }
       });
@@ -1628,7 +2243,7 @@
   // naval, so this only ever matters for units standing on land next to one.
   function boardableTiles(unit, reachable) {
     var type = UNIT_TYPES[unit.typeId];
-    if ((type.domain || "land") !== "land") return [];
+    if ((type.domain || "land") !== "land" || type.category === "air") return [];
     var frontier = reachable.concat([[unit.x, unit.y]]);
     var found = {};
     var out = [];
@@ -1659,31 +2274,46 @@
     state.selectedUnitId = null;
   }
 
-  // Finds an empty, non-water tile adjacent to the frigate to disembark onto.
-  function findDisembarkTile(frigate) {
+  // All open, non-water adjacent tiles a ship could set cargo down on —
+  // used both to auto-pick a spot for the AI and to offer the player a
+  // choice of landing tile.
+  function findAllDisembarkTiles(frigate) {
     var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    var out = [];
     for (var i = 0; i < dirs.length; i++) {
       var nx = frigate.x + dirs[i][0], ny = frigate.y + dirs[i][1];
       if (!inBounds(nx, ny)) continue;
       if (terrainAt(nx, ny) === "water") continue;
       if (unitAt(nx, ny) || baseAt(nx, ny)) continue;
-      return [nx, ny];
+      out.push([nx, ny]);
     }
-    return null;
+    return out;
+  }
+  function findDisembarkTile(frigate) {
+    var tiles = findAllDisembarkTiles(frigate);
+    return tiles.length ? tiles[0] : null;
   }
 
-  function disembarkUnit(frigate, cargoIdx) {
+  // Actually lands cargo slot cargoIdx from frigate onto (x, y) — the caller
+  // is responsible for having confirmed (x, y) is a valid landing tile.
+  function disembarkUnitAt(frigate, cargoIdx, x, y) {
     var landUnit = frigate.cargo[cargoIdx];
     if (!landUnit) return;
-    var spot = findDisembarkTile(frigate);
-    if (!spot) { addLog("No open ground to disembark onto."); return; }
     frigate.cargo.splice(cargoIdx, 1);
-    landUnit.x = spot[0];
-    landUnit.y = spot[1];
+    landUnit.x = x;
+    landUnit.y = y;
     landUnit.acted = true;
     var f = factionOf(landUnit.owner);
     f.units.push(landUnit);
     addLog(UNIT_TYPES[landUnit.typeId].name + " (" + landUnit.owner + ") disembarks.");
+  }
+
+  // Auto-picks the first open landing tile — used by the AI, which has no
+  // UI to offer a choice through.
+  function disembarkUnit(frigate, cargoIdx) {
+    var spot = findDisembarkTile(frigate);
+    if (!spot) { addLog("No open ground to disembark onto."); return; }
+    disembarkUnitAt(frigate, cargoIdx, spot[0], spot[1]);
   }
 
   // Shared by the combat-analysis modal (preview) and the actual resolve, so
@@ -1695,21 +2325,43 @@
     var attType = UNIT_TYPES[attackerUnit.typeId];
     var targetUnit = unitAt(targetX, targetY);
     var targetBase = baseAt(targetX, targetY);
+    // A player city's in-built coastal artillery only ever cares about
+    // naval attackers: against one, the city fights back with a regular
+    // artillery's attack (instead of its normal 0) and takes zero damage in
+    // return — "infinite defence" for as long as the city stands. Against a
+    // land attacker none of this applies; the city behaves exactly as it
+    // always has.
+    var innerArtilleryActive = !!(targetBase && targetBase.base.hasInnerArtillery && targetBase.base.alive
+      && attType.category === "naval");
+    var baseEffectiveAttack = targetBase ? (innerArtilleryActive ? UNIT_TYPES.artillery.attack : targetBase.base.attack) : 0;
     var defenderType = targetUnit ? UNIT_TYPES[targetUnit.typeId]
-      : (targetBase ? { name: targetBase.base.isCamp ? NATIVE_CAMP_STATS.name : BASE_STATS.name, attack: targetBase.base.attack, defense: targetBase.base.defense, hp: targetBase.base.maxHp, category: "base" } : BASE_STATS);
+      : (targetBase ? { name: targetBase.base.isCamp ? NATIVE_CAMP_STATS.name : BASE_STATS.name, attack: baseEffectiveAttack, defense: targetBase.base.defense, hp: targetBase.base.maxHp, category: "base" } : BASE_STATS);
     var defenderTerrain = terrainAt(targetX, targetY);
     var attackerTerrain = terrainAt(attackerUnit.x, attackerUnit.y);
-    var dealt = computeDamage(attType, defenderType, defenseBonus(defenderTerrain));
-    var taken = defenderType.attack > 0 ? computeDamage(defenderType, attType, defenseBonus(attackerTerrain)) : 0;
+    var dealt = innerArtilleryActive ? 0 : computeDamage(attType, defenderType, defenseBonus(defenderTerrain), defenderTerrain);
+    var taken = defenderType.attack > 0 ? computeDamage(defenderType, attType, defenseBonus(attackerTerrain), attackerTerrain) : 0;
     return {
       attType: attType, defenderType: defenderType, targetUnit: targetUnit, targetBase: targetBase,
-      defenderTerrain: defenderTerrain, attackerTerrain: attackerTerrain, dealt: dealt, taken: taken
+      defenderTerrain: defenderTerrain, attackerTerrain: attackerTerrain, dealt: dealt, taken: taken,
+      innerArtilleryActive: innerArtilleryActive
     };
   }
 
   function resolveUnitAttack(attackerUnit, targetX, targetY) {
     var p = previewCombat(attackerUnit, targetX, targetY);
     var attType = p.attType, defenderType = p.defenderType, dmg = p.dealt;
+
+    // One hit from the AI against any native unit or base is enough to
+    // startle that camp into ongoing hostility against the AI — checked
+    // before any hp is actually changed below, so it fires even on a
+    // killing blow.
+    if (attackerUnit.owner === "ai") {
+      if (p.targetUnit && p.targetUnit.owner === "natives" && p.targetUnit.campId) {
+        startleCampAgainstAi(campById(p.targetUnit.campId));
+      } else if (p.targetBase && p.targetBase.id === "natives") {
+        startleCampAgainstAi(p.targetBase.base);
+      }
+    }
 
     if (p.targetUnit) {
       var targetUnit = p.targetUnit;
@@ -1739,18 +2391,43 @@
     } else if (p.targetBase) {
       var targetBase = p.targetBase;
       var label = cityLabel(targetBase.faction, targetBase.base);
-      targetBase.base.hp = Math.max(0, targetBase.base.hp - dmg);
-      addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + " for " + dmg + " (" + targetBase.base.hp + "/" + targetBase.base.maxHp + ").");
+      if (p.innerArtilleryActive) {
+        addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + ", but its coastal artillery shrugs off naval fire entirely.");
+      } else {
+        targetBase.base.hp = Math.max(0, targetBase.base.hp - dmg);
+        addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + " for " + dmg + " (" + targetBase.base.hp + "/" + targetBase.base.maxHp + ").");
+      }
       if (targetBase.base.hp === 0) {
         targetBase.base.alive = false;
         addLog(possessiveLabel(targetBase.id) + " " + label + " destroyed.", false);
-        // Wiping out every native camp is not a win/loss condition — only
-        // the player's and the AI's own cities decide the game.
-        if (targetBase.id !== "natives" && targetBase.faction.bases.every(function (b) { return !b.alive; })) {
-          // A war-pact native landing the finishing blow counts as a player
-          // win — they're only out there fighting because you struck the
-          // pact, and "the natives win" isn't a state the result screen has.
-          endGame(attackerUnit.owner === "natives" ? "player" : attackerUnit.owner);
+        // The city's in-built coastal artillery only ever protected it
+        // against naval fire — it can still be razed by land attackers, and
+        // when it finally falls this way, that same artillery survives the
+        // ruin as a standalone, ordinary Artillery unit (full HP, and no
+        // longer naval-only — "goes back to normal" once the city breaks).
+        if (targetBase.base.hasInnerArtillery && targetBase.id === "player" && !unitAt(targetBase.base.x, targetBase.base.y)) {
+          var popArtillery = newUnit("artillery", "player", targetBase.base.x, targetBase.base.y);
+          state.player.units.push(popArtillery);
+          addLog("An Artillery emerges from the ruins of " + label + ".", false);
+        }
+        // Wiping out every native camp — or every hard-mode barbarian city —
+        // is not a win/loss condition — only the player's and the AI's own
+        // cities decide the game.
+        if (targetBase.id !== "natives" && targetBase.id !== "barbarians" && targetBase.faction.bases.every(function (b) { return !b.alive; })) {
+          // A native or a barbarian landing the finishing blow still needs to
+          // resolve to a player/AI winner — neither "the natives win" nor
+          // "the barbarians win" is a state the result screen has. A native
+          // only ever destroys the player's last base while hunting the
+          // player (an AI war pact), and only ever destroys the AI's last
+          // base while hunting the AI (a player war pact, or being startled
+          // into it) — atWarVsPlayer is what tells the two apart. A
+          // barbarian is hostile to both sides equally, so whichever side
+          // didn't just lose its last city is credited with the win.
+          var raidWinner;
+          if (attackerUnit.owner === "natives") raidWinner = attackerUnit.atWarVsPlayer ? "ai" : "player";
+          else if (attackerUnit.owner === "barbarians") raidWinner = targetBase.id === "player" ? "ai" : "player";
+          else raidWinner = attackerUnit.owner;
+          endGame(raidWinner);
         }
       } else if (defenderType.attack > 0) {
         // A camp (or, in principle, any base with an attack stat) fights
@@ -1768,6 +2445,15 @@
         }
       }
     }
+    // One-time use: a Missile that's still standing after its own strike
+    // (i.e. it wasn't the one that just died to a counterattack above,
+    // which already removed and logged it) is spent and disappears,
+    // win or lose, hit a unit, a city, or a native — it doesn't stick
+    // around to attack again.
+    if (attType.oneTimeUse && attackerUnit.hp > 0) {
+      addLog(attType.name + " (" + attackerUnit.owner + ") is spent after the strike and disappears.", false);
+      removeUnit(attackerUnit);
+    }
     attackerUnit.acted = true;
   }
 
@@ -1776,13 +2462,39 @@
     f.units = f.units.filter(function (x) { return x.id !== u.id; });
   }
 
-  function ownerLabel(id) { return id === "player" ? "Your" : (id === "natives" ? "Native" : "Enemy"); }
-  function possessiveLabel(id) { return id === "natives" ? "natives'" : id + "'s"; }
+  // The real name of whoever ("You"/"The AI" or a hotseat human's own name)
+  // is in the given slot right now — used for the handful of high-visibility
+  // spots (victory/defeat screen, Hall of Fame, the pass-device prompt, the
+  // HUD label) where showing "The AI" during a 2-human hotseat game would
+  // be actively confusing. Most in-game log lines are left saying "You"/
+  // "The AI" regardless — cosmetic, and correct in the moment they're
+  // logged (see swapHotseatSeats), just stale if read back later.
+  function sideName(id) {
+    if (state.hotseat) {
+      if (id === "player" && state.player.displayName) return state.player.displayName;
+      if (id === "ai" && state.ai.displayName) return state.ai.displayName;
+    }
+    return id === "player" ? "You" : "The AI";
+  }
+  function ownerLabel(id) { return id === "player" ? "Your" : (id === "natives" ? "Native" : (id === "barbarians" ? "Barbarian" : "Enemy")); }
+  function possessiveLabel(id) { return id === "natives" ? "natives'" : (id === "barbarians" ? "barbarians'" : id + "'s"); }
+  // Short parenthetical for tooltips summarizing a camp's standing with
+  // both sides at once, e.g. " (peace w/ you, war ally of the AI)".
+  function campStatusSuffix(camp) {
+    if (!camp) return "";
+    var bits = [];
+    if (camp.pact === "peace") bits.push("peace w/ you");
+    if (camp.pact === "war") bits.push("war ally of yours");
+    if (camp.aiPact === "peace") bits.push("peace w/ AI");
+    if (camp.aiPact === "war") bits.push("war ally of the AI");
+    if (camp.startledByAi) bits.push("hostile to AI");
+    return bits.length ? " (" + bits.join(", ") + ")" : "";
+  }
 
   function endGame(winnerId) {
     state.over = true;
     state.winner = winnerId;
-    addLog((winnerId === "player" ? "You" : "The AI") + " win the reckoning.", true);
+    addLog(sideName(winnerId) + " win the war.", true);
   }
 
   // ---------- ECONOMY / TURN TICK ----------
@@ -1791,13 +2503,22 @@
   function tickFaction(f) {
     if (!factionAlive(f)) return;
     var pb = productionBreakdown(f);
-    var mult = (f.id === "ai" && state.difficulty) ? (DIFFICULTY_AI_MULT[state.difficulty] || 1) : 1;
+    // The difficulty multiplier is a bot-pacing lever only — never applied
+    // to a real human, which in local hotseat is also whoever is currently
+    // sitting in the "ai" slot.
+    var mult = (f.id === "ai" && state.difficulty && !state.hotseat) ? (DIFFICULTY_AI_MULT[state.difficulty] || 1) : 1;
     f.production += Math.round(pb.total * mult);
     f.research += Math.round(1 * mult);
 
     if (f.techIndex < TECHS.length) {
       var t = TECHS[f.techIndex];
-      if (f.research >= t.cost) {
+      // A playerOnly tech (currently just Guided Missiles) never completes
+      // for anyone else — the AI's research simply stalls here forever
+      // rather than advancing past it, so it never reaches, and never
+      // builds, a unit meant to be exclusive to the player — except in local
+      // hotseat, where the "ai" slot is also a real human and gets the same
+      // access (per the multiplayer spec: other players can build it too).
+      if ((!t.playerOnly || f.id === "player" || state.hotseat) && f.research >= t.cost) {
         f.techIndex += 1;
         t.unlocks.forEach(function (id) { if (f.unlocked.indexOf(id) === -1) f.unlocked.push(id); });
         addLog((f.id === "player" ? "You" : "The AI") + " completed " + t.name + ".");
@@ -1822,7 +2543,7 @@
           // queue once a valid spot is actually found, so a built unit is
           // never silently lost (a real bug this fixes, not just new code).
           var domain = qtype.domain || "land";
-          var spot = findSpawnTileForFaction(f, domain);
+          var spot = findSpawnTileForFaction(f, domain, qitem.cityId);
           if (spot) {
             f.production -= qtype.cost;
             f.units.push(newUnit(qitem.id, f.id, spot[0], spot[1]));
@@ -1833,8 +2554,60 @@
       }
     }
 
+    f.units.forEach(function (u) {
+      if (u.typeId === "builder") {
+        var damagedCity = adjacentDamagedCity(u, f);
+        if (damagedCity) {
+          damagedCity.hp = Math.min(damagedCity.maxHp, damagedCity.hp + BUILDER_REPAIR_HP);
+          if (damagedCity.hp === damagedCity.maxHp) {
+            addLog((f.id === "player" ? "Your" : "The AI's") + " Builder finishes repairing " + cityLabel(f, damagedCity) + " (" + damagedCity.hp + "/" + damagedCity.maxHp + ").");
+          } else {
+            addLog((f.id === "player" ? "Your" : "The AI's") + " Builder repairs " + cityLabel(f, damagedCity) + " (" + damagedCity.hp + "/" + damagedCity.maxHp + ").");
+          }
+        }
+      }
+    });
+
+    runAntiAirBattery(f);
+
     f.units.forEach(function (u) { u.acted = false; });
     return pb.total;
+  }
+
+  // Once a faction has built the Anti-Air Battery (faction-wide, like the
+  // other buildings), every one of its living cities takes a free shot at
+  // any enemy flying unit sitting adjacent to it, every turn. A one-time-use
+  // flyer (currently just the Missile) is exempt — it's a guided munition,
+  // not a loitering aircraft the battery can track and down, so no city's
+  // Anti-Air Battery can stop one from reaching and striking its target.
+  function runAntiAirBattery(f) {
+    if (f.buildings.indexOf("antiAir") === -1) return;
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    f.bases.forEach(function (b) {
+      if (!b.alive) return;
+      dirs.forEach(function (d) {
+        var u = unitAt(b.x + d[0], b.y + d[1]);
+        if (!u || u.owner === f.id || u.hp <= 0) return;
+        var ut = UNIT_TYPES[u.typeId];
+        if (ut.category !== "air" || ut.oneTimeUse) return;
+        u.hp = Math.max(0, u.hp - ANTI_AIR_DAMAGE);
+        addLog((f.id === "player" ? "Your" : "The AI's") + " Anti-Air Battery at " + cityLabel(f, b) +
+          " hits " + ut.name + " (" + u.owner + ") for " + ANTI_AIR_DAMAGE + " (" + u.hp + "/" + ut.hp + ").");
+        if (u.hp === 0) {
+          addLog(ut.name + " (" + u.owner + ") shot down.", false);
+          removeUnit(u);
+        }
+      });
+    });
+  }
+
+  function adjacentDamagedCity(u, f) {
+    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var i = 0; i < dirs.length; i++) {
+      var b = baseAt(u.x + dirs[i][0], u.y + dirs[i][1]);
+      if (b && b.id === f.id && b.base.alive && b.base.hp < b.base.maxHp) return b.base;
+    }
+    return null;
   }
 
   function findSpawnTile(bx, by, domain) {
@@ -1848,11 +2621,21 @@
     return null;
   }
 
-  // Tries the capital first, then each later-founded city, for an open
-  // adjacent tile (matching the unit's domain) to spawn a newly built unit on.
-  function findSpawnTileForFaction(f, domain) {
+  // Tries the city the unit was actually queued at first (if given and
+  // still alive/has room), then falls back to the capital, then each
+  // later-founded city in order, for an open adjacent tile (matching the
+  // unit's domain) to spawn a newly built unit on.
+  function findSpawnTileForFaction(f, domain, preferredCityId) {
+    if (preferredCityId) {
+      var preferred = findCityById(f, preferredCityId);
+      if (preferred && preferred.alive) {
+        var pSpot = findSpawnTile(preferred.x, preferred.y, domain);
+        if (pSpot) return pSpot;
+      }
+    }
     for (var i = 0; i < f.bases.length; i++) {
       if (!f.bases[i].alive) continue;
+      if (preferredCityId && f.bases[i].id === preferredCityId) continue; // already tried above
       var spot = findSpawnTile(f.bases[i].x, f.bases[i].y, domain);
       if (spot) return spot;
     }
@@ -1919,6 +2702,17 @@
         return;
       }
 
+      // The AI's Builder heads for its most damaged city and sits beside it
+      // to make repairs each turn; with nothing to fix, it just holds put
+      // near the capital so it's ready when a city does take damage.
+      if (u.typeId === "builder") {
+        if (adjacentDamagedCity(u, f)) { u.acted = true; return; }
+        var neediestCity = nearestDamagedCity(u, f);
+        if (neediestCity) moveToward(u, neediestCity.x, neediestCity.y);
+        u.acted = true;
+        return;
+      }
+
       // Settlers found cities on their own island; if the island is full,
       // they head for the coast to hitch a ride on a friendly ship instead.
       if (type.canFoundCity) {
@@ -1965,6 +2759,23 @@
         }
       }
 
+      // The AI's Scout can negotiate with native camps just like the
+      // player's can — ask for peace, or strike a war plan against the
+      // player if it has a weak unit spare to hand over as tribute.
+      if (u.typeId === "scout") {
+        var nearCampAi = adjacentNativeCamp(u);
+        if (nearCampAi && nearCampAi.aiPact === null && campWillNegotiateWith(nearCampAi, "ai")) {
+          var wantsWar = Math.random() < 0.5;
+          var negotiated = wantsWar ? aiProposeWarPlan(u, nearCampAi) : aiAskForPeace(u, nearCampAi);
+          if (!negotiated) negotiated = wantsWar ? aiAskForPeace(u, nearCampAi) : aiProposeWarPlan(u, nearCampAi);
+          if (negotiated) return;
+        }
+        var targetCamp = nearestUnnegotiatedCampForAi(u);
+        if (targetCamp) moveToward(u, targetCamp.x, targetCamp.y);
+        u.acted = true;
+        return;
+      }
+
       var reachable = reachableTiles(u);
       var attackable = attackableTiles(u, reachable);
       if (attackable.length) {
@@ -1991,6 +2802,16 @@
     return best;
   }
 
+  function nearestDamagedCity(u, f) {
+    var best = null, bestD = Infinity;
+    f.bases.forEach(function (b) {
+      if (!b.alive || b.hp >= b.maxHp) return;
+      var d = Math.abs(b.x - u.x) + Math.abs(b.y - u.y);
+      if (d < bestD) { bestD = d; best = b; }
+    });
+    return best;
+  }
+
   function nearestResourceTile(u) {
     var best = null, bestD = Infinity;
     RESOURCE_LIST.forEach(function (r) {
@@ -2000,10 +2821,15 @@
     return best;
   }
 
+  // Only ever considers enemy units/bases the acting faction can currently
+  // see — a faction with no vision grid of its own (natives) falls back to
+  // full knowledge, unchanged.
   function nearestEnemy(u) {
     var enemy = enemyOf(u.owner);
-    var candidates = enemy.units.map(function (e) { return [e.x, e.y]; });
-    enemy.bases.forEach(function (b) { if (b.alive) candidates.push([b.x, b.y]); });
+    var visGrid = factionOf(u.owner).visible;
+    var isVisible = function (x, y) { return !visGrid || (visGrid[y] && visGrid[y][x]); };
+    var candidates = enemy.units.filter(function (e) { return isVisible(e.x, e.y); }).map(function (e) { return [e.x, e.y]; });
+    enemy.bases.forEach(function (b) { if (b.alive && isVisible(b.x, b.y)) candidates.push([b.x, b.y]); });
     var best = null, bestD = Infinity;
     candidates.forEach(function (c) {
       var d = Math.abs(c[0] - u.x) + Math.abs(c[1] - u.y);
@@ -2089,7 +2915,20 @@
     howToBackBtn: document.getElementById("howToBackBtn"),
     hallOfFameOverlay: document.getElementById("hallOfFameOverlay"),
     hofList: document.getElementById("hofList"),
-    hofBackBtn: document.getElementById("hofBackBtn")
+    hofBackBtn: document.getElementById("hofBackBtn"),
+    homeMpBtn: document.getElementById("homeMpBtn"),
+    multiplayerOverlay: document.getElementById("multiplayerOverlay"),
+    mpName1Input: document.getElementById("mpName1Input"),
+    mpName2Input: document.getElementById("mpName2Input"),
+    mpDiffBabyBtn: document.getElementById("mpDiffBabyBtn"),
+    mpDiffMediumBtn: document.getElementById("mpDiffMediumBtn"),
+    mpDiffHardBtn: document.getElementById("mpDiffHardBtn"),
+    mpBackBtn: document.getElementById("mpBackBtn"),
+    hudAiLabel: document.getElementById("hudAiLabel"),
+    passDeviceOverlay: document.getElementById("passDeviceOverlay"),
+    passDeviceTitle: document.getElementById("passDeviceTitle"),
+    passDeviceBody: document.getElementById("passDeviceBody"),
+    passDeviceBtn: document.getElementById("passDeviceBtn")
   };
   var pendingAttack = null;
 
@@ -2101,6 +2940,7 @@
     el.saveOverlay.hidden = true;
     el.howToPlayOverlay.hidden = true;
     el.hallOfFameOverlay.hidden = true;
+    el.multiplayerOverlay.hidden = true;
   }
   function showHome() {
     el.gameScreen.hidden = true;
@@ -2120,6 +2960,17 @@
     hideAllMenus();
     renderHallOfFameList();
     el.hallOfFameOverlay.hidden = false;
+  }
+  function showMultiplayer() {
+    hideAllMenus();
+    el.multiplayerOverlay.hidden = false;
+  }
+  // Shown between the two humans' sub-turns in local hotseat (see the End
+  // Turn handler) — covers the board so the next player's info isn't on
+  // screen before they've actually picked up the device.
+  function showPassDevice(name) {
+    el.passDeviceBody.textContent = "Hand the device to " + name + ", then tap Start Turn.";
+    el.passDeviceOverlay.hidden = false;
   }
   function showLoadGame() {
     hideAllMenus();
@@ -2210,7 +3061,7 @@
     }
     el.hofList.innerHTML = games.map(function (g) {
       return '<div class="hof-item ' + (g.result === "win" ? "win" : "loss") + '">' +
-        '<span class="hof-result">' + (g.result === "win" ? "Victory" : "Defeat") + '</span>' +
+        '<span class="hof-result">' + (g.winnerName ? (g.winnerName + " Wins") : (g.result === "win" ? "Victory" : "Defeat")) + '</span>' +
         '<span class="hof-meta">Turn ' + g.turn + ' · ' + (DIFFICULTY_LABEL[g.difficulty] || g.difficulty) + ' · ' + formatSavedAt(g.date) + '</span>' +
         '</div>';
     }).join("");
@@ -2225,7 +3076,7 @@
     el.combatAttackerStats.textContent = "ATK " + p.attType.attack + " / DEF " + p.attType.defense;
     el.combatAttackerTerrain.textContent = defenseBonus(p.attackerTerrain) ? terrainLabel(p.attackerTerrain) + " +" + defenseBonus(p.attackerTerrain) + " def" : "";
 
-    var defenderIconId = p.targetBase ? "base" : iconIdFor(p.defenderType);
+    var defenderIconId = p.targetBase ? (p.targetBase.id === "natives" ? "camp" : "base") : iconIdFor(p.defenderType);
     el.combatDefenderBadge.innerHTML = '<svg><use href="#icon-' + defenderIconId + '"></use></svg>';
     el.combatDefenderName.textContent = p.targetBase ? (p.targetBase.id === "natives" ? "Native Camp" : "Enemy Base") : p.defenderType.name;
     el.combatDefenderStats.textContent = "ATK " + p.defenderType.attack + " / DEF " + p.defenderType.defense;
@@ -2283,8 +3134,10 @@
       ? f.buildQueue.map(function (item, i) {
           var t = queueItemType(item);
           var iconId = item.kind === "building" ? item.id : item.id;
+          var destCity = item.cityId ? findCityById(f, item.cityId) : null;
+          var destLabel = destCity && destCity.alive ? " → " + cityLabel(f, destCity) : "";
           var row = '<div class="city-item"><div class="badge-mini"><svg><use href="#icon-' + iconId + '"></use></svg></div>' +
-            '<div style="flex:1"><div>' + t.name + (item.kind === "building" ? " (building)" : "") + '</div>';
+            '<div style="flex:1"><div>' + t.name + (item.kind === "building" ? " (building)" : destLabel) + '</div>';
           if (i === 0) {
             var pct = Math.min(100, (f.production / t.cost) * 100);
             row += '<div class="desc">' + f.production + ' / ' + t.cost + ' pts</div><div class="city-progress"><div class="city-progress-fill" style="width:' + pct + '%"></div></div>';
@@ -2322,10 +3175,15 @@
     el.endTurnBtn.disabled = state.over;
     if (state.over) {
       el.resultOverlay.hidden = false;
-      el.resultTitle.textContent = state.winner === "player" ? "Victory" : "Defeat";
-      el.resultBody.textContent = state.winner === "player" ? "Every enemy city has been destroyed." : "All of your cities have fallen.";
+      if (state.hotseat) {
+        el.resultTitle.textContent = sideName(state.winner) + " Wins";
+        el.resultBody.textContent = "Every other city on the island has fallen.";
+      } else {
+        el.resultTitle.textContent = state.winner === "player" ? "Victory" : "Defeat";
+        el.resultBody.textContent = state.winner === "player" ? "Every enemy city has been destroyed." : "All of your cities have fallen.";
+      }
       if (!state.hofRecorded) {
-        recordHallOfFame(state.winner === "player" ? "win" : "loss");
+        recordHallOfFame(state.winner === "player" ? "win" : "loss", state.hotseat ? sideName(state.winner) : null);
         state.hofRecorded = true;
       }
     } else {
@@ -2338,12 +3196,15 @@
     updateFogOfWar();
     el.board.innerHTML = "";
     var su = selectedUnit();
-    var reachable = su ? reachableTiles(su) : [];
-    var attackable = su ? attackableTiles(su, reachable) : [];
-    var boardable = su ? boardableTiles(su, reachable) : [];
+    var pendingShip = state.pendingDisembark ? su : null;
+    var reachable = (su && !pendingShip) ? reachableTiles(su) : [];
+    var attackable = (su && !pendingShip) ? attackableTiles(su, reachable) : [];
+    var boardable = (su && !pendingShip) ? boardableTiles(su, reachable) : [];
+    var disembarkTiles = pendingShip ? findAllDisembarkTiles(pendingShip) : [];
     var reachSet = {}; reachable.forEach(function (t) { reachSet[key(t[0], t[1])] = true; });
     var atkSet = {}; attackable.forEach(function (t) { atkSet[key(t[0], t[1])] = true; });
     var boardSet = {}; boardable.forEach(function (t) { boardSet[key(t[0], t[1])] = true; });
+    var disembarkSet = {}; disembarkTiles.forEach(function (t) { disembarkSet[key(t[0], t[1])] = true; });
 
     for (var y = 0; y < ROWS; y++) {
       for (var x = 0; x < COLS; x++) {
@@ -2364,15 +3225,23 @@
         if (reachSet[k]) tile.classList.add("reachable");
         if (atkSet[k]) tile.classList.add("attackable");
         if (boardSet[k]) tile.classList.add("boardable");
+        if (disembarkSet[k]) tile.classList.add("disembarkable");
 
         if (isExplored) {
           var b = baseAt(x, y);
           var u = unitAt(x, y);
+          // A base, once discovered, stays visible as a structure (its exact
+          // live HP is a minor simplification). A unit is different — it
+          // moves, so an enemy or native unit only actually shows up on a
+          // tile that's within your CURRENT vision, not just ever-explored
+          // ground; your own units are always shown.
+          var showUnit = u && (u.owner === "player" || (state.player.visible && state.player.visible[y][x]));
           if (b) {
             var bt = document.createElement("div");
             bt.className = "base-token " + b.id;
-            bt.title = ownerLabel(b.id) + (b.id === "natives" ? " Camp" + (b.base.pact ? " (" + b.base.pact + ")" : "") : " Base");
-            bt.innerHTML = '<svg><use href="#icon-base"></use></svg>';
+            var antiAirNote = (b.id !== "natives" && factionOf(b.id).buildings.indexOf("antiAir") !== -1) ? " (anti-air)" : "";
+            bt.title = ownerLabel(b.id) + (b.id === "natives" ? " Camp" + campStatusSuffix(b.base) : (b.id === "barbarians" ? " City" : " Base" + (b.base.hasInnerArtillery ? " (coastal artillery — immune to naval attack)" : "") + antiAirNote));
+            bt.innerHTML = '<svg><use href="#icon-' + (b.id === "natives" ? "camp" : "base") + '"></use></svg>';
             tile.appendChild(bt);
             var pip = document.createElement("div");
             pip.className = "hp-pip";
@@ -2381,11 +3250,11 @@
             fill.style.width = Math.max(0, (b.base.hp / b.base.maxHp) * 100) + "%";
             pip.appendChild(fill);
             tile.appendChild(pip);
-          } else if (u) {
+          } else if (showUnit) {
             var type = UNIT_TYPES[u.typeId];
             var tok = document.createElement("div");
             tok.className = "token " + u.owner + (u.acted ? " acted" : "");
-            tok.title = ownerLabel(u.owner) + " " + type.name + (u.owner === "natives" && u.atWar ? " (war ally)" : "");
+            tok.title = ownerLabel(u.owner) + " " + type.name + (u.owner === "natives" && u.campId ? campStatusSuffix(campById(u.campId)) : "");
             tok.innerHTML = '<svg><use href="#icon-' + iconIdFor(type) + '"></use></svg>';
             tile.appendChild(tok);
             var pip2 = document.createElement("div");
@@ -2421,6 +3290,21 @@
 
   function onTileClick(x, y) {
     if (state.over) return;
+
+    if (state.pendingDisembark) {
+      var ship = selectedUnit();
+      var validTiles = ship ? findAllDisembarkTiles(ship) : [];
+      var isValidLanding = validTiles.some(function (t) { return t[0] === x && t[1] === y; });
+      if (ship && isValidLanding) {
+        disembarkUnitAt(ship, state.pendingDisembark.cargoIdx, x, y);
+      }
+      // Clicking a highlighted tile lands there; clicking anywhere else
+      // simply cancels the landing-site choice, no action taken.
+      state.pendingDisembark = null;
+      render();
+      return;
+    }
+
     var su = selectedUnit();
 
     if (su) {
@@ -2460,10 +3344,23 @@
     el.hudPlayerProd.textContent = state.player.production;
     el.hudPlayerCities.textContent = state.player.bases.filter(function (b) { return b.alive; }).length;
     el.hudAiProd.textContent = state.ai.production;
+    el.hudAiLabel.textContent = state.hotseat ? (sideName("ai") + " Production") : "AI Production";
   }
 
   function renderSelection() {
     var su = selectedUnit();
+    if (su && state.pendingDisembark) {
+      var pendingType = UNIT_TYPES[su.typeId];
+      var landUnit = su.cargo[state.pendingDisembark.cargoIdx];
+      var landName = landUnit ? UNIT_TYPES[landUnit.typeId].name : "unit";
+      el.selectionBody.innerHTML =
+        '<p class="sel-name">' + pendingType.name + '</p>' +
+        '<div class="hint">Click a highlighted tile to land the ' + landName + ', or Cancel.</div>' +
+        '<button class="view-city" id="cancelDisembarkBtn">Cancel</button>';
+      var cdb = document.getElementById("cancelDisembarkBtn");
+      if (cdb) cdb.addEventListener("click", function () { state.pendingDisembark = null; render(); });
+      return;
+    }
     if (su) {
       var type = UNIT_TYPES[su.typeId];
       var reachableSel = reachableTiles(su);
@@ -2487,14 +3384,17 @@
       // living native camp, can negotiate with it.
       var nearCamp = (su.typeId === "scout" && su.owner === "player" && !su.acted) ? adjacentNativeCamp(su) : null;
       var negotiateHtml = "";
-      if (nearCamp && nearCamp.pact !== "war") {
+      var campWontTalkToPlayer = nearCamp && nearCamp.pact !== "war" && !campWillNegotiateWith(nearCamp, "player");
+      if (nearCamp && nearCamp.pact === "war") {
+        negotiateHtml = '<div class="hint">This camp is at war with the AI on your behalf.</div>';
+      } else if (campWontTalkToPlayer) {
+        negotiateHtml = '<div class="hint">This camp already fights for the AI — it won’t negotiate with you.</div>';
+      } else if (nearCamp) {
         var hasTribute = !!findTributeUnit(state.player);
         negotiateHtml = '<div class="hint">' + (nearCamp.pact === "peace" ? "At peace with this native camp." : "A native camp is within reach.") + '</div>' +
           (nearCamp.pact ? '' : '<button class="view-city" id="askPeaceBtn">Ask for Peace</button>') +
           '<button class="view-city" id="proposeWarBtn">Propose War Plan</button>' +
           (hasTribute ? '' : '<div class="hint">Needs a weak unit (Infantry) nearby to give as tribute.</div>');
-      } else if (nearCamp) {
-        negotiateHtml = '<div class="hint">This camp is at war with the AI on your behalf.</div>';
       }
       el.selectionBody.innerHTML =
         '<p class="sel-name">' + type.name + '</p>' +
@@ -2507,6 +3407,7 @@
         foundHint +
         (canFound ? '<button class="view-city" id="foundCityBtn">Found City</button>' : '') +
         negotiateHtml +
+        (su.owner === "player" ? '<button class="view-city disband-btn" id="disbandUnitBtn">Disband Unit</button>' : '') +
         (type.capacity && su.cargo.length
           ? '<div class="cargo-list">' + su.cargo.map(function (c, i) {
               var ct = UNIT_TYPES[c.typeId];
@@ -2516,7 +3417,21 @@
       if (type.capacity && su.cargo.length) {
         Array.prototype.forEach.call(el.selectionBody.querySelectorAll(".disembark-btn"), function (btn) {
           btn.addEventListener("click", function () {
-            disembarkUnit(su, parseInt(btn.getAttribute("data-idx"), 10));
+            var idx = parseInt(btn.getAttribute("data-idx"), 10);
+            var landingTiles = findAllDisembarkTiles(su);
+            if (!landingTiles.length) {
+              addLog("No open ground to disembark onto.");
+              render();
+              return;
+            }
+            if (landingTiles.length === 1) {
+              disembarkUnitAt(su, idx, landingTiles[0][0], landingTiles[0][1]);
+              render();
+              return;
+            }
+            // More than one open spot — let the player pick which tile to
+            // land on instead of always taking the first one found.
+            state.pendingDisembark = { cargoIdx: idx };
             render();
           });
         });
@@ -2525,7 +3440,11 @@
         var fcb = document.getElementById("foundCityBtn");
         if (fcb) fcb.addEventListener("click", function () { foundCityAction(su); });
       }
-      if (nearCamp && nearCamp.pact !== "war") {
+      if (su.owner === "player") {
+        var dub = document.getElementById("disbandUnitBtn");
+        if (dub) dub.addEventListener("click", function () { disbandUnit(su); render(); });
+      }
+      if (nearCamp && nearCamp.pact !== "war" && !campWontTalkToPlayer) {
         var apb = document.getElementById("askPeaceBtn");
         if (apb) apb.addEventListener("click", function () { askForPeace(su, nearCamp); render(); });
         var pwb = document.getElementById("proposeWarBtn");
@@ -2549,6 +3468,17 @@
     } else {
       el.selectionBody.innerHTML = '<p class="sel-empty">Click one of your units or your base.</p>';
     }
+  }
+
+  function disbandUnit(u) {
+    var type = UNIT_TYPES[u.typeId];
+    if (u.cargo && u.cargo.length) {
+      addLog(u.cargo.length + " unit(s) aboard were lost when " + possessiveLabel(u.owner) + " " + type.name + " was disbanded.", false);
+      u.cargo = [];
+    }
+    addLog((u.owner === "player" ? "You" : "The AI") + " disbanded a " + type.name + ".", false);
+    removeUnit(u);
+    if (state.selectedUnitId === u.id) state.selectedUnitId = null;
   }
 
   function foundCityAction(settlerUnit) {
@@ -2593,8 +3523,11 @@
       el.buildSelect.appendChild(buildingGroup);
     }
 
+    var frontItem = f.buildQueue[0];
+    var frontDestCity = frontItem && frontItem.cityId ? findCityById(f, frontItem.cityId) : null;
+    var frontDestLabel = frontDestCity && frontDestCity.alive ? " → " + cityLabel(f, frontDestCity) : "";
     var queueText = f.buildQueue.length
-      ? "Building: " + queueItemType(f.buildQueue[0]).name + " (" + f.production + "/" + queueItemType(f.buildQueue[0]).cost + " pts, " + f.buildQueue.length + " queued)"
+      ? "Building: " + queueItemType(frontItem).name + frontDestLabel + " (" + f.production + "/" + queueItemType(frontItem).cost + " pts, " + f.buildQueue.length + " queued)"
       : "Base is idle — pick something and queue it.";
     if (f.buildings.indexOf("shipyard") === -1 && !factionHasCoastalCity(f)) {
       queueText += " Found or capture a city on the coast to unlock the Shipyard.";
@@ -2634,7 +3567,15 @@
     var raw = el.buildSelect.value;
     if (!raw) return;
     var parts = raw.split(":");
-    state.player.buildQueue.push({ kind: parts[0], id: parts[1] });
+    var item = { kind: parts[0], id: parts[1] };
+    // A unit remembers which city was selected when it was queued, so it
+    // spawns near that city specifically rather than always defaulting to
+    // the capital — buildings aren't tied to a spawn location, so this only
+    // applies to units.
+    if (item.kind === "unit" && state.selectedBaseId && findCityById(state.player, state.selectedBaseId)) {
+      item.cityId = state.selectedBaseId;
+    }
+    state.player.buildQueue.push(item);
     renderBuildPanel();
     if (!el.cityOverlay.hidden) renderCityView();
   });
@@ -2643,30 +3584,83 @@
     if (state.over) return;
     state.selectedUnitId = null;
     state.selectedBaseId = null;
+    state.pendingDisembark = null;
+
+    // Local hotseat: the first of the two humans ending their turn only
+    // ticks their own economy, then hands off to the other human — the
+    // shared, no-one-in-particular end-of-round processing below (natives,
+    // barbarians, the turn counter) waits until the second human has also
+    // had their turn.
+    if (state.hotseat && !state.hotseatSecondTurn) {
+      tickFaction(state.player);
+      if (state.over) { render(); return; }
+      state.hotseatSecondTurn = true;
+      swapHotseatSeats();
+      render();
+      showPassDevice(state.player.displayName);
+      return;
+    }
 
     tickFaction(state.player);
     if (state.over) { render(); return; }
-    tickFaction(state.ai);
-    if (state.over) { render(); return; }
+    if (!state.hotseat) {
+      tickFaction(state.ai);
+      if (state.over) { render(); return; }
 
-    runAiTurn();
-    if (state.over) { render(); return; }
+      runAiTurn();
+      if (state.over) { render(); return; }
+    }
 
     runNativesTurn();
     if (state.over) { render(); return; }
 
+    tickBarbarianEconomy();
+    if (state.over) { render(); return; }
+
+    runBarbarianTurn();
+    if (state.over) { render(); return; }
+
+    if (state.hotseat) {
+      state.hotseatSecondTurn = false;
+      swapHotseatSeats();
+    }
+
     state.turn += 1;
     addLog("Turn " + state.turn + " begins.");
+    maybeSpawnBarbarians();
     render();
   });
 
-  el.restartBtn.addEventListener("click", function () { startNewGame(state.difficulty); });
+  el.restartBtn.addEventListener("click", function () {
+    if (state.hotseat) {
+      // Re-use the same two names rather than dropping back to a
+      // single-player game on "Play Again".
+      startHotseatGame(state.player.displayName, state.ai.displayName, state.difficulty);
+      beginPlay();
+    } else {
+      startNewGame(state.difficulty);
+    }
+  });
   el.resultMenuBtn.addEventListener("click", function () { showHome(); });
 
   el.homePlayBtn.addEventListener("click", showDifficulty);
   el.homeLoadBtn.addEventListener("click", showLoadGame);
   el.homeHowToBtn.addEventListener("click", showHowToPlay);
   el.homeHofBtn.addEventListener("click", showHallOfFame);
+  el.homeMpBtn.addEventListener("click", showMultiplayer);
+
+  el.mpBackBtn.addEventListener("click", showHome);
+  function startHotseatFromForm(difficulty) {
+    startHotseatGame(el.mpName1Input.value, el.mpName2Input.value, difficulty);
+    beginPlay();
+  }
+  el.mpDiffBabyBtn.addEventListener("click", function () { startHotseatFromForm("baby"); });
+  el.mpDiffMediumBtn.addEventListener("click", function () { startHotseatFromForm("medium"); });
+  el.mpDiffHardBtn.addEventListener("click", function () { startHotseatFromForm("hard"); });
+
+  el.passDeviceBtn.addEventListener("click", function () {
+    el.passDeviceOverlay.hidden = true;
+  });
 
   el.diffBabyBtn.addEventListener("click", function () { startNewGame("baby"); });
   el.diffMediumBtn.addEventListener("click", function () { startNewGame("medium"); });
@@ -2695,7 +3689,8 @@
     if (el.gameScreen.hidden) return;
     if (!el.combatOverlay.hidden || !el.cityOverlay.hidden || !el.resultOverlay.hidden ||
         !el.homeOverlay.hidden || !el.difficultyOverlay.hidden || !el.loadOverlay.hidden ||
-        !el.saveOverlay.hidden || !el.howToPlayOverlay.hidden || !el.hallOfFameOverlay.hidden) return;
+        !el.saveOverlay.hidden || !el.howToPlayOverlay.hidden || !el.hallOfFameOverlay.hidden ||
+        !el.multiplayerOverlay.hidden || !el.passDeviceOverlay.hidden) return;
     e.preventDefault();
     el.endTurnBtn.click();
   });
