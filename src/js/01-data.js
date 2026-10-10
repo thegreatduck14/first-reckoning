@@ -113,7 +113,7 @@
   // medium ones in between for settlers to sail to and colonize. Regenerated
   // fresh every new game, so no two playthroughs share a map.
   var COLS = 28, ROWS = 18;
-  var TILE_PX = 34;
+  var TILE_PX = 36;
   var TERRAIN_GRID = null;   // [y][x] -> "water" | "plain" | "forest" | "mountain"
   var RESOURCE_GRID = null;  // [y][x] -> bool
   var RESOURCE_LIST = [];    // flat [[x,y],...] mirror of RESOURCE_GRID, for AI pathing

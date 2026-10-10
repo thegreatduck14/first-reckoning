@@ -497,11 +497,11 @@
       if (su.acted) {
         hint = "Already acted this turn.";
       } else if (type.capacity) {
-        hint = "Click a green tile to move, or a red tile to attack.";
+        hint = "Click a white-outlined tile to move, or a red-outlined tile to attack.";
       } else if (boardableSel.length) {
-        hint = "Click a green tile to move, a red tile to attack, or a teal tile to board a ship.";
+        hint = "Click a white-outlined tile to move, a red-outlined tile to attack, or a cyan-outlined tile to board a ship.";
       } else {
-        hint = "Click a green tile to move, or a red tile to attack.";
+        hint = "Click a white-outlined tile to move, or a red-outlined tile to attack.";
       }
       var canFound = type.canFoundCity && !su.acted && isValidCitySite(su.x, su.y);
       var foundHint = "";

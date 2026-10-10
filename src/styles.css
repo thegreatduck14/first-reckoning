@@ -15,12 +15,11 @@
     --rust-dim: #8a4230;
     --barbarian: #8a2a2a;
     --board: #4fa3a8;
-    --tile: #2c2417;
-    --tile-resource: #4a3d1e;
-    --tile-forest: #33422a;
-    --tile-mountain: #4f4437;
-    --tile-water: #253d4d;
     --shadow: rgba(0,0,0,0.45);
+    --team-player: #2fe39a;
+    --team-ai: #ff4a5a;
+    --team-natives: #ffb020;
+    --team-barbarians: #a14dff;
     color-scheme: dark;
   }
   :root[data-theme="light"] {
@@ -40,11 +39,6 @@
     --rust-dim: #7a3220;
     --barbarian: #7a2020;
     --board: #2f7d82;
-    --tile: #e3d5ae;
-    --tile-resource: #d4b96a;
-    --tile-forest: #9cb37c;
-    --tile-mountain: #b6a889;
-    --tile-water: #8fb9cc;
     --shadow: rgba(60,45,20,0.15);
     color-scheme: light;
   }
@@ -53,8 +47,8 @@
       --bg: #f4ecd8; --bg-2: #ece0c4; --panel: #fbf5e6; --panel-2: #f2e8d0;
       --edge: #cdb888; --edge-soft: #ddc9a0; --ink: #2c2114; --ink-dim: #5b4c34;
       --ink-faint: #8a7a58; --brass: #93601c; --brass-dim: #6f4813; --sage: #4d6b3e;
-      --rust: #9c4128; --rust-dim: #7a3220; --barbarian: #7a2020; --board: #2f7d82; --tile: #e3d5ae; --tile-resource: #d4b96a;
-      --tile-forest: #9cb37c; --tile-mountain: #b6a889; --tile-water: #8fb9cc;
+      --rust: #9c4128; --rust-dim: #7a3220; --barbarian: #7a2020; --board: #2f7d82;
+     
       --shadow: rgba(60,45,20,0.15); color-scheme: light;
     }
   }
@@ -87,8 +81,8 @@
   }
   .hud-stat .k { font-family: 'Oswald', sans-serif; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
   .hud-stat .v { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 15px; font-variant-numeric: tabular-nums; }
-  .hud-stat.player { border-left: 3px solid var(--sage); }
-  .hud-stat.ai { border-left: 3px solid var(--rust); }
+  .hud-stat.player { border-left: 3px solid var(--team-player); }
+  .hud-stat.ai { border-left: 3px solid var(--team-ai); }
 
   .layout { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
   @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } }
@@ -103,97 +97,66 @@
   .board-hint { font-size: 11px; color: var(--ink-faint); margin: 8px 0 0; }
   .board {
     display: grid;
-    grid-template-columns: repeat(var(--cols, 28), var(--tile-px, 34px));
-    grid-template-rows: repeat(var(--rows, 18), var(--tile-px, 34px));
-    gap: 1px;
+    grid-template-columns: repeat(var(--cols, 28), var(--tile-px, 36px));
+    grid-template-rows: repeat(var(--rows, 18), var(--tile-px, 36px));
+    gap: 0;
     width: max-content;
   }
+  /* Tiles are 12x12 pixel patterns scaled 3x (36px). Plain ground cycles through
+     three grass variants so big fields don't look stamped. */
   .tile {
-    background-color: var(--tile);
-    background-image:
-      repeating-linear-gradient(45deg, rgba(0,0,0,0.05) 0 2px, transparent 2px 4px),
-      repeating-linear-gradient(-45deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 4px);
-    border: 1px solid var(--edge-soft);
-    border-radius: 2px;
+    background-color: #45d65a;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%2345d65a%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%2210%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%2210%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23ffffff%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23ff5ce0%22%2F%3E%3C%2Fsvg%3E");
+    background-size: 100% 100%;
+    image-rendering: pixelated;
     position: relative;
     display: flex; align-items: center; justify-content: center;
     cursor: default;
     min-width: 0; min-height: 0;
   }
-  .tile.resource {
-    background-color: var(--tile-resource);
-    background-image:
-      repeating-linear-gradient(45deg, rgba(0,0,0,0.07) 0 2px, transparent 2px 4px),
-      repeating-linear-gradient(-45deg, rgba(255,255,255,0.04) 0 2px, transparent 2px 4px);
-  }
-  .tile.forest {
-    background-color: var(--tile-forest);
-    background-image:
-      repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0 2px, transparent 2px 4px),
-      repeating-linear-gradient(-45deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 4px);
-  }
-  .tile.mountain {
-    background-color: var(--tile-mountain);
-    background-image:
-      repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0 2px, transparent 2px 4px),
-      repeating-linear-gradient(-45deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 4px);
-  }
-  .tile.water {
-    background-color: var(--tile-water);
-    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 3px, transparent 3px 9px);
-  }
-  .tile.unexplored {
-    background-color: #050505;
-    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 5px);
-    border-color: #000;
-  }
-  .tile.reachable { outline: 2px solid var(--sage); outline-offset: -2px; cursor: pointer; }
-  .tile.attackable { outline: 2px solid var(--rust); outline-offset: -2px; cursor: pointer; }
-  .tile.boardable { outline: 2px solid var(--board); outline-offset: -2px; cursor: pointer; }
-  .tile.disembarkable { outline: 2px dashed var(--brass); outline-offset: -2px; cursor: pointer; }
-  .tile.selected { outline: 2px solid var(--brass); outline-offset: -2px; }
+  .tile:nth-child(3n) { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%2345d65a%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%239bf58a%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%239bf58a%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3C%2Fsvg%3E"); }
+  .tile:nth-child(7n+2) { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%2345d65a%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%239bf58a%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%239bf58a%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%232fae44%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23ffffff%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23ff5ce0%22%2F%3E%3C%2Fsvg%3E"); }
+  .tile.resource { background-color: #ffd65c; background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%23ffd65c%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23f5a31a%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23ffffff%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23fff3b0%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23fff3b0%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23fff3b0%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23fff3b0%22%2F%3E%3C%2Fsvg%3E"); }
+  .tile.forest { background-color: #2ba048; background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%232ba048%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%2210%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%231d7f37%22%2F%3E%3C%2Fsvg%3E"); }
+  .tile.mountain { background-color: #a49fd0; background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%23a49fd0%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23c3bfe6%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23c3bfe6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23c3bfe6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%2210%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23c3bfe6%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23c3bfe6%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23c3bfe6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%2210%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23c3bfe6%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%223%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%238680b8%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%228%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23c3bfe6%22%2F%3E%3C%2Fsvg%3E"); }
+  .tile.water { background-color: #2f86ff; background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%232f86ff%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%225%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%225%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3C%2Fsvg%3E"); animation: wave 1.4s steps(1) infinite; }
+  .tile.unexplored { background-color: #0b0b22; background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%230b0b22%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%226%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%224%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%224%22%20y%3D%222%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%227%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%223%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%225%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%229%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23181845%22%2F%3E%3C%2Fsvg%3E"); }
+  @keyframes wave { 0% { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%232f86ff%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%229%22%20y%3D%225%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%220%22%20y%3D%225%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%225%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3C%2Fsvg%3E"); } 50% { background-image: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2012%2012%22%20shape-rendering%3D%22crispEdges%22%3E%3Crect%20width%3D%2212%22%20height%3D%2212%22%20fill%3D%22%232f86ff%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%225%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%222%22%20y%3D%225%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%221%22%20width%3D%223%22%20height%3D%221%22%20fill%3D%22%237bbcff%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%221%22%20width%3D%222%22%20height%3D%221%22%20fill%3D%22%231f5fd6%22%2F%3E%3C%2Fsvg%3E"); } }
+  @media (prefers-reduced-motion: reduce) { .tile.water { animation: none; } }
+  .tile.reachable { outline: 3px solid #ffffff; outline-offset: -3px; box-shadow: inset 0 0 0 1px #14142b; cursor: pointer; }
+  .tile.attackable { outline: 3px solid #ff3b4f; outline-offset: -3px; box-shadow: inset 0 0 0 1px #14142b; cursor: pointer; }
+  .tile.boardable { outline: 3px solid #3ff0f0; outline-offset: -3px; box-shadow: inset 0 0 0 1px #14142b; cursor: pointer; }
+  .tile.disembarkable { outline: 3px dashed #ffe23a; outline-offset: -3px; box-shadow: inset 0 0 0 1px #14142b; cursor: pointer; }
+  .tile.selected { outline: 3px solid #ffe23a; outline-offset: -3px; box-shadow: inset 0 0 0 1px #14142b; }
 
   .goods-icon {
-    position: absolute; width: 42%; height: 42%; top: 8%; left: 8%;
-    fill: var(--brass);
-    filter: drop-shadow(0 1px 0 rgba(0,0,0,0.35));
+    position: absolute; width: 24px; height: 24px; top: 6px; left: 6px;
     pointer-events: none;
   }
   .terrain-icon {
-    position: absolute; width: 52%; height: 52%; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    fill: rgba(0,0,0,0.4);
-    filter: drop-shadow(0 1px 0 rgba(255,255,255,0.12));
+    position: absolute; width: 100%; height: 100%; top: 0; left: 0;
     pointer-events: none;
   }
 
-  .token {
-    width: 78%; height: 78%; border-radius: 50%;
+  /* Units and bases sit in notched, team-coloured pixel badges. */
+  .token, .base-token, .combat-side .badge, .city-item .badge-mini {
+    border: 3px solid #14142b;
     display: flex; align-items: center; justify-content: center;
-    color: var(--bg);
+    clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px), 0 3px, 3px 3px);
     user-select: none;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.4);
   }
-  .token.player { background: var(--sage); }
-  .token.ai { background: var(--rust); }
-  .token.natives { background: var(--brass); }
-  .token.barbarians { background: var(--barbarian); }
+  .token, .base-token { width: 30px; height: 30px; filter: drop-shadow(0 2px 0 rgba(0,0,0,0.35)); }
+  .token svg, .base-token svg { width: 24px; height: 24px; }
+  .token.player, .base-token.player { background: var(--team-player); }
+  .token.ai, .base-token.ai { background: var(--team-ai); }
+  .token.natives, .base-token.natives { background: var(--team-natives); }
+  .token.barbarians, .base-token.barbarians { background: var(--team-barbarians); }
   .token.acted { opacity: 0.45; }
-  .token svg { width: 68%; height: 68%; fill: rgba(0,0,0,0.72); }
-  .base-token {
-    width: 84%; height: 84%; border-radius: 3px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.4);
-  }
-  .base-token.player { background: var(--sage); }
-  .base-token.natives { background: var(--brass); }
-  .base-token.ai { background: var(--rust); }
-  .base-token.barbarians { background: var(--barbarian); }
-  .base-token svg { width: 74%; height: 74%; fill: rgba(0,0,0,0.72); }
   .hp-pip {
-    position: absolute; bottom: 2px; left: 2px; right: 2px;
-    height: 3px; background: var(--edge-soft); border-radius: 2px; overflow: hidden;
+    position: absolute; bottom: 0; left: 4px; right: 4px;
+    height: 5px; padding: 1px; background: #14142b;
   }
-  .hp-pip-fill { height: 100%; background: var(--brass); }
+  .hp-pip-fill { height: 100%; background: #7cf23c; }
   .cargo-badge {
     position: absolute; top: 2px; right: 2px;
     min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
@@ -282,14 +245,10 @@
   }
   .combat-compare { display: flex; align-items: center; gap: 12px; }
   .combat-side { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
-  .combat-side .badge {
-    width: 44px; height: 44px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
-  }
-  .combat-side .badge svg { width: 68%; height: 68%; fill: rgba(0,0,0,0.72); }
-  .combat-side.player .badge { background: var(--sage); }
-  .combat-side.enemy .badge { background: var(--rust); }
+  .combat-side .badge { width: 48px; height: 48px; }
+  .combat-side .badge svg { width: 36px; height: 36px; }
+  .combat-side.player .badge { background: var(--team-player); }
+  .combat-side.enemy .badge { background: var(--team-ai); }
   .combat-side .name { font-family: 'Oswald', sans-serif; font-size: 12.5px; font-weight: 600; }
   .combat-side .terrain-note { font-size: 11px; color: var(--brass); min-height: 1.3em; }
   .combat-side .mini-stats { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11.5px; color: var(--ink-dim); }
@@ -340,11 +299,8 @@
     padding: 7px 10px; font-size: 12.5px;
   }
   .city-item .desc { color: var(--ink-faint); font-size: 11.5px; }
-  .city-item .badge-mini {
-    width: 22px; height: 22px; border-radius: 50%; background: var(--sage); flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .city-item .badge-mini svg { width: 65%; height: 65%; fill: rgba(0,0,0,0.72); }
+  .city-item .badge-mini { width: 34px; height: 34px; background: var(--team-player); flex-shrink: 0; }
+  .city-item .badge-mini svg { width: 24px; height: 24px; }
   .city-progress { height: 5px; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 2px; overflow: hidden; margin-top: 4px; }
   .city-progress-fill { height: 100%; background: var(--brass); }
   button.view-city {
