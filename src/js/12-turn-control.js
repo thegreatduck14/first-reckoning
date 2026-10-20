@@ -23,6 +23,7 @@
 
   el.endTurnBtn.addEventListener("click", function () {
     if (state.over) return;
+    clearHint();
     state.selectedUnitId = null;
     state.selectedBaseId = null;
     state.pendingDisembark = null;
@@ -195,7 +196,7 @@
       exportSlotText: exportSlotText, importSaveText: importSaveText, migrateSave: migrateSave,
       runAiTurn: runAiTurn, tickFaction: tickFaction, newUnit: newUnit, unitAt: unitAt, baseAt: baseAt,
       terrainAt: terrainAt, previewCombat: previewCombat, UNIT_TYPES: UNIT_TYPES, LS_SAVES_KEY: LS_SAVES_KEY, SAVE_VERSION: SAVE_VERSION,
-      aiBestAttack: aiBestAttack, attackableTiles: attackableTiles, reachableTiles: reachableTiles, islandIdAt: islandIdAt,
+      aiBestAttack: aiBestAttack, resolveUnitAttack: resolveUnitAttack, attackableTiles: attackableTiles, reachableTiles: reachableTiles, islandIdAt: islandIdAt,
       updateFogOfWar: updateFogOfWar, COLS: COLS, ROWS: ROWS
     };
   }

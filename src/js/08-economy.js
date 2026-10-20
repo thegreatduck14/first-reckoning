@@ -8,7 +8,10 @@
     // to a real human, which in local hotseat is also whoever is currently
     // sitting in the "ai" slot.
     var mult = (f.id === "ai" && state.difficulty && !state.hotseat) ? (DIFFICULTY_AI_MULT[state.difficulty] || 1) : 1;
-    f.production += Math.round(pb.total * mult);
+    var gained = Math.round(pb.total * mult);
+    f.production += gained;
+    statsOf(f).production += gained;
+    statsOf(f).turns++;
     f.research += Math.round(1 * mult);
 
     if (f.techIndex < TECHS.length) {
@@ -69,9 +72,23 @@
       }
     });
 
+    // Medics patch up every friendly unit standing next to them.
+    f.units.forEach(function (m) {
+      if (m.typeId !== "medic") return;
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(function (d) {
+        var pal = unitAt(m.x + d[0], m.y + d[1]);
+        if (!pal || pal.owner !== f.id || pal.hp >= UNIT_TYPES[pal.typeId].hp) return;
+        pal.hp = Math.min(UNIT_TYPES[pal.typeId].hp, pal.hp + MEDIC_HEAL_HP);
+        addLog((f.id === "player" ? "Your" : "The AI's") + " Medic heals " + UNIT_TYPES[pal.typeId].name + " (" + pal.hp + "/" + UNIT_TYPES[pal.typeId].hp + ").");
+      });
+    });
+
     runAntiAirBattery(f);
 
-    f.units.forEach(function (u) { u.acted = false; });
+    f.units.forEach(function (u) {
+      u.dugAt = u.acted ? null : [u.x, u.y];
+      u.acted = false;
+    });
     return pb.total;
   }
 
@@ -91,11 +108,16 @@
         if (!u || u.owner === f.id || u.hp <= 0) return;
         var ut = UNIT_TYPES[u.typeId];
         if (ut.category !== "air" || ut.oneTimeUse) return;
+        var hpBefore = u.hp;
         u.hp = Math.max(0, u.hp - ANTI_AIR_DAMAGE);
+        statsOf(f).damageDealt += hpBefore - u.hp;
+        if (isScored(u.owner)) statsOf(factionOf(u.owner)).damageTaken += hpBefore - u.hp;
         addLog((f.id === "player" ? "Your" : "The AI's") + " Anti-Air Battery at " + cityLabel(f, b) +
           " hits " + ut.name + " (" + u.owner + ") for " + ANTI_AIR_DAMAGE + " (" + u.hp + "/" + ut.hp + ").");
         if (u.hp === 0) {
           addLog(ut.name + " (" + u.owner + ") shot down.", false);
+          statsOf(f).unitsKilled++;
+          if (isScored(u.owner)) statsOf(factionOf(u.owner)).unitsLost++;
           removeUnit(u);
         }
       });

@@ -28,7 +28,7 @@
   // startled into defensive hostility against the AI, won't hear out the
   // other side's Scout at all.
   function campWillNegotiateWith(camp, side) {
-    if (side === "player") return camp.aiPact !== "war";
+    if (side === "player") return camp.aiPact !== "war" && !camp.startledByPlayer;
     return camp.pact !== "war" && !camp.startledByAi;
   }
   // The living native camp (if any) adjacent to a unit's own tile.
@@ -100,6 +100,22 @@
     addLog("The natives' " + cityLabel(state.natives, camp) + " are startled into war against the AI.");
   }
 
+  // Natives only ever fight back: any side that lands a hit on a camp or its
+  // garrison (the player, the AI, or barbarians) is marked, and from then on
+  // that camp's garrison hunts that side.
+  function provokeCamp(camp, attackerOwner) {
+    if (!camp) return;
+    if (attackerOwner === "ai") startleCampAgainstAi(camp);
+    else if (attackerOwner === "player") {
+      if (camp.startledByPlayer) return;
+      camp.startledByPlayer = true;
+      if (camp.pact === "peace") camp.pact = null;
+      addLog("The natives' " + cityLabel(state.natives, camp) + " turn on you.");
+    } else if (attackerOwner === "barbarians") {
+      camp.startledByBarbarians = true;
+    }
+  }
+
   // Nearest living camp the AI hasn't yet settled anything with — used to
   // give the AI's Scout somewhere to actually walk toward, the same way a
   // player would explore toward one.
@@ -134,36 +150,32 @@
     state.natives.units.slice().forEach(function (u) {
       if (u.hp <= 0) return;
       var camp = u.campId ? campById(u.campId) : null;
-      var huntsAi = u.atWar || (camp && camp.startledByAi);
-      var huntsPlayer = !!u.atWarVsPlayer;
-      if (!huntsAi && !huntsPlayer) return;
-      // A unit hostile to both sides at once (theoretically possible only
-      // if it were startled while also AI-war-pacted, which
-      // campWillNegotiateWith prevents) prefers whichever enemy is closer.
-      var targetFactionId = huntsAi && huntsPlayer
-        ? (function () {
-            var da = nearestFactionTarget(u, "ai");
-            var dp = nearestFactionTarget(u, "player");
-            if (!da) return "player";
-            if (!dp) return "ai";
-            var distTo = function (t) { return Math.abs(t[0] - u.x) + Math.abs(t[1] - u.y); };
-            return distTo(da) <= distTo(dp) ? "ai" : "player";
-          })()
-        : (huntsAi ? "ai" : "player");
+      var enemies = [];
+      if (u.atWar || (camp && camp.startledByAi)) enemies.push("ai");
+      if (u.atWarVsPlayer || (camp && camp.startledByPlayer)) enemies.push("player");
+      if (camp && camp.startledByBarbarians) enemies.push("barbarians");
+      if (!enemies.length) return;
+      var distTo = function (t) { return Math.abs(t[0] - u.x) + Math.abs(t[1] - u.y); };
+      // With several enemies at once, go for whichever is closest.
+      var targetFactionId = null, target = null, bestD = Infinity;
+      enemies.forEach(function (fid) {
+        var t = nearestFactionTarget(u, fid);
+        if (t && distTo(t) < bestD) { bestD = distTo(t); target = t; targetFactionId = fid; }
+      });
+      if (!target) return;
 
       var reachable = reachableTiles(u);
       var attackable = attackableTiles(u, reachable).filter(function (t) {
         var eu = unitAt(t[0], t[1]);
         var eb = baseAt(t[0], t[1]);
-        return (eu && eu.owner === targetFactionId) || (eb && eb.id === targetFactionId);
+        return (eu && enemies.indexOf(eu.owner) !== -1) || (eb && enemies.indexOf(eb.id) !== -1);
       });
       if (attackable.length) {
         var t = pickWeakestTarget(attackable);
         resolveUnitAttack(u, t[0], t[1]);
         return;
       }
-      var target = nearestFactionTarget(u, targetFactionId);
-      if (target) moveToward(u, target[0], target[1]);
+      moveToward(u, target[0], target[1]);
       u.acted = true;
     });
   }

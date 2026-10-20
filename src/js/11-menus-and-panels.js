@@ -9,6 +9,7 @@
     el.multiplayerOverlay.hidden = true;
   }
   function showHome() {
+    clearHint();
     el.gameScreen.hidden = true;
     document.body.classList.remove("playing");
     hideAllMenus();
@@ -202,13 +203,13 @@
     el.combatAttackerBadge.innerHTML = '<svg><use href="#icon-' + iconIdFor(p.attType) + '"></use></svg>';
     el.combatAttackerName.textContent = p.attType.name;
     el.combatAttackerStats.textContent = "ATK " + p.attType.attack + " / DEF " + p.attType.defense;
-    el.combatAttackerTerrain.textContent = defenseBonus(p.attackerTerrain) ? terrainLabel(p.attackerTerrain) + " +" + defenseBonus(p.attackerTerrain) + " def" : "";
+    el.combatAttackerTerrain.textContent = p.attBonus ? terrainLabel(p.attackerTerrain) + " +" + p.attBonus + " def" + (dugInBonus(attackerUnit) ? " (dug in)" : "") : "";
 
     var defenderIconId = p.targetBase ? (p.targetBase.id === "natives" ? "camp" : "base") : iconIdFor(p.defenderType);
     el.combatDefenderBadge.innerHTML = '<svg><use href="#icon-' + defenderIconId + '"></use></svg>';
     el.combatDefenderName.textContent = p.targetBase ? (p.targetBase.id === "natives" ? "Native Camp" : "Enemy Base") : p.defenderType.name;
     el.combatDefenderStats.textContent = "ATK " + p.defenderType.attack + " / DEF " + p.defenderType.defense;
-    el.combatDefenderTerrain.textContent = defenseBonus(p.defenderTerrain) ? terrainLabel(p.defenderTerrain) + " +" + defenseBonus(p.defenderTerrain) + " def" : "";
+    el.combatDefenderTerrain.textContent = p.defBonus ? terrainLabel(p.defenderTerrain) + " +" + p.defBonus + " def" + (p.targetUnit && dugInBonus(p.targetUnit) ? " (dug in)" : "") : "";
 
     el.combatDealt.textContent = p.dealt;
     el.combatTaken.textContent = p.taken;
@@ -300,9 +301,12 @@
     renderBuildPanel();
     renderTech();
     renderLog();
+    updateHintUi();
+    if (!state.over) el.scoreDetail.hidden = true;
     el.endTurnBtn.disabled = state.over;
     if (state.over) {
       el.resultOverlay.hidden = false;
+      renderScore();
       if (state.hotseat) {
         el.resultTitle.textContent = sideName(state.winner) + " Wins";
         el.resultBody.textContent = "Every other city on the island has fallen.";
@@ -354,6 +358,8 @@
         if (atkSet[k]) tile.classList.add("attackable");
         if (boardSet[k]) tile.classList.add("boardable");
         if (disembarkSet[k]) tile.classList.add("disembarkable");
+        if (hintTiles && hintTiles.from && hintTiles.from[0] === x && hintTiles.from[1] === y) tile.classList.add("hint-from");
+        if (hintTiles && hintTiles.to && hintTiles.to[0] === x && hintTiles.to[1] === y) tile.classList.add("hint-to");
 
         if (isExplored) {
           var b = baseAt(x, y);
@@ -368,7 +374,7 @@
             var bt = document.createElement("div");
             bt.className = "base-token " + b.id;
             var antiAirNote = (b.id !== "natives" && factionOf(b.id).buildings.indexOf("antiAir") !== -1) ? " (anti-air)" : "";
-            bt.title = ownerLabel(b.id) + (b.id === "natives" ? " Camp" + campStatusSuffix(b.base) : (b.id === "barbarians" ? " City" : " Base" + (b.base.hasInnerArtillery ? " (coastal artillery — immune to naval attack)" : "") + antiAirNote));
+            bt.title = ownerLabel(b.id) + (b.id === "natives" ? " Camp" + campStatusSuffix(b.base) : (b.id === "barbarians" ? " City" : " Base" + (b.base.hasInnerArtillery ? " (coastal artillery — fires back at ships)" : "") + antiAirNote));
             bt.innerHTML = '<svg><use href="#icon-' + (b.id === "natives" ? "camp" : "base") + '"></use></svg>';
             tile.appendChild(bt);
             var pip = document.createElement("div");
@@ -442,7 +448,18 @@
       var isReach = reachable.some(function (t) { return t[0] === x && t[1] === y; });
       var isAtk = attackable.some(function (t) { return t[0] === x && t[1] === y; });
       var isBoard = boardable.some(function (t) { return t[0] === x && t[1] === y; });
-      if (isAtk) { openCombatAnalysis(su, x, y); return; }
+      if (isAtk) {
+        var tu = unitAt(x, y), tb = baseAt(x, y);
+        var tCamp = tu && tu.owner === "natives" ? campById(tu.campId) : (tb && tb.id === "natives" ? tb.base : null);
+        if (tCamp && tCamp.pact === "peace") {
+          askConfirm("Break treaty?", "natives can attack you if you press that.", "Break treaty", function () {
+            openCombatAnalysis(su, x, y);
+          });
+          return;
+        }
+        openCombatAnalysis(su, x, y);
+        return;
+      }
       if (isBoard) { boardFrigate(su, unitAt(x, y)); render(); return; }
       if (isReach) { su.x = x; su.y = y; su.acted = true; state.selectedUnitId = null; render(); return; }
     }

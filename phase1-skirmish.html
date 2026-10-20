@@ -343,6 +343,15 @@
       radial-gradient(ellipse at 50% 14%, var(--bg-2) 0%, var(--bg) 75%);
   }
   .menu-overlay[hidden] { display: none; }
+
+  /* Home screen card: always dark, whatever the theme. */
+  #homeOverlay .menu-card {
+    background: rgba(24, 20, 14, 0.96);
+    color: #ecdfc2; box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(214,154,63,0.25);
+  }
+  #homeOverlay .menu-card .home-sub { color: #a9997a; }
+  #homeOverlay .menu-card h1.home-title { color: #f3e6c6; text-shadow: 0 0 18px rgba(214,154,63,0.45); }
+  #homeOverlay .menu-btn:not(.primary) { background: rgba(54, 43, 26, 0.7); color: #ecdfc2; border-color: #4a3c25; }
   .menu-card {
     background: var(--panel); border: 1px solid var(--brass); border-radius: 4px;
     padding: 26px 30px 30px; width: min(420px, 92vw); max-height: 82vh; overflow-y: auto;
@@ -451,6 +460,41 @@
   button.icon-btn:hover { border-color: var(--brass); }
   button.icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
   @media (max-width: 620px) { .corner-actions { top: 10px; right: 10px; } button.icon-btn { width: 34px; height: 34px; } }
+
+  /* Baby Mode hints */
+  .tile.hint-from { outline: 3px solid #ffd24a; outline-offset: -3px; animation: hintPulse 1.1s ease-in-out infinite; }
+  .tile.hint-to { box-shadow: inset 0 0 0 3px #ffd24a, inset 0 0 14px 4px rgba(255,210,74,0.55); animation: hintPulse 1.1s ease-in-out infinite; }
+  @keyframes hintPulse { 50% { filter: brightness(1.35); } }
+  .hint-box {
+    position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 30;
+    max-width: min(520px, calc(100vw - 32px)); background: var(--panel); border: 2px solid var(--brass); color: var(--ink);
+    padding: 12px 16px; border-radius: 3px; font-size: 14px; line-height: 1.5; box-shadow: 0 6px 22px var(--shadow);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .hint-box[hidden] { display: none; }
+  .hint-box .hint-box-title { font-family: 'Oswald', sans-serif; letter-spacing: 0.1em; text-transform: uppercase; font-size: 12px; color: var(--brass); }
+  .hint-box button { align-self: flex-end; width: auto; padding: 6px 16px; }
+  button.icon-btn[hidden] { display: none; }
+
+  /* End-of-game score dock */
+  .score-dock {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 14px;
+    background: var(--panel); border-top: 2px solid var(--brass); box-shadow: 0 -6px 22px var(--shadow);
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .score-line { display: flex; align-items: center; gap: 14px; }
+  .score-pct { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 26px; color: var(--brass); min-width: 64px; }
+  .score-bar { width: min(640px, 100%); height: 14px; background: var(--bg-2); border: 1px solid var(--edge); border-radius: 2px; overflow: hidden; }
+  .score-bar-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--rust), var(--brass), var(--sage)); transition: width 0.8s ease-out; }
+  .score-detail {
+    width: min(640px, 100%); max-height: 46vh; overflow-y: auto; text-align: left;
+    background: var(--panel-2); border: 1px solid var(--edge); border-radius: 3px; padding: 10px 14px;
+  }
+  .score-detail[hidden] { display: none; }
+  .score-detail h3 { font-family: 'Oswald', sans-serif; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brass); margin: 0 0 8px; }
+  .score-row { margin-bottom: 8px; }
+  .score-row-head { display: flex; justify-content: space-between; font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); }
+  .score-row-detail { font-size: 12.5px; color: var(--ink-dim); line-height: 1.45; }
 </style>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Spectral:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -468,7 +512,7 @@
     <symbol id="icon-heavyVehicle" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="4" y="2" width="4" height="1" fill="#14142b"/><rect x="3" y="3" width="1" height="1" fill="#14142b"/><rect x="4" y="3" width="1" height="1" fill="#7cf23c"/><rect x="5" y="3" width="2" height="1" fill="#22b33c"/><rect x="7" y="3" width="1" height="1" fill="#14142b"/><rect x="8" y="3" width="3" height="1" fill="#50557a"/><rect x="11" y="3" width="1" height="1" fill="#14142b"/><rect x="2" y="4" width="2" height="1" fill="#14142b"/><rect x="4" y="4" width="4" height="1" fill="#22b33c"/><rect x="8" y="4" width="2" height="1" fill="#14142b"/><rect x="1" y="5" width="1" height="1" fill="#14142b"/><rect x="2" y="5" width="8" height="1" fill="#22b33c"/><rect x="10" y="5" width="1" height="1" fill="#14142b"/><rect x="0" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="6" width="10" height="1" fill="#7cf23c"/><rect x="11" y="6" width="1" height="1" fill="#14142b"/><rect x="0" y="7" width="12" height="1" fill="#14142b"/><rect x="0" y="8" width="1" height="1" fill="#14142b"/><rect x="1" y="8" width="1" height="1" fill="#50557a"/><rect x="2" y="8" width="1" height="1" fill="#d6dcf0"/><rect x="3" y="8" width="1" height="1" fill="#50557a"/><rect x="4" y="8" width="1" height="1" fill="#d6dcf0"/><rect x="5" y="8" width="1" height="1" fill="#50557a"/><rect x="6" y="8" width="1" height="1" fill="#d6dcf0"/><rect x="7" y="8" width="1" height="1" fill="#50557a"/><rect x="8" y="8" width="1" height="1" fill="#d6dcf0"/><rect x="9" y="8" width="1" height="1" fill="#50557a"/><rect x="10" y="8" width="1" height="1" fill="#d6dcf0"/><rect x="11" y="8" width="1" height="1" fill="#14142b"/><rect x="0" y="9" width="1" height="1" fill="#14142b"/><rect x="1" y="9" width="10" height="1" fill="#50557a"/><rect x="11" y="9" width="1" height="1" fill="#14142b"/><rect x="1" y="10" width="10" height="1" fill="#14142b"/></symbol>
     <symbol id="icon-artillery" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="7" y="2" width="3" height="1" fill="#14142b"/><rect x="10" y="2" width="1" height="1" fill="#ff9a1a"/><rect x="6" y="3" width="1" height="1" fill="#14142b"/><rect x="7" y="3" width="2" height="1" fill="#d6dcf0"/><rect x="9" y="3" width="2" height="1" fill="#50557a"/><rect x="11" y="3" width="1" height="1" fill="#14142b"/><rect x="5" y="4" width="1" height="1" fill="#14142b"/><rect x="6" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="7" y="4" width="3" height="1" fill="#50557a"/><rect x="10" y="4" width="1" height="1" fill="#14142b"/><rect x="4" y="5" width="1" height="1" fill="#14142b"/><rect x="5" y="5" width="4" height="1" fill="#50557a"/><rect x="9" y="5" width="1" height="1" fill="#14142b"/><rect x="2" y="6" width="2" height="1" fill="#14142b"/><rect x="4" y="6" width="4" height="1" fill="#d17a2e"/><rect x="8" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="1" height="1" fill="#14142b"/><rect x="2" y="7" width="7" height="1" fill="#d17a2e"/><rect x="9" y="7" width="1" height="1" fill="#14142b"/><rect x="1" y="8" width="10" height="1" fill="#14142b"/><rect x="1" y="9" width="1" height="1" fill="#14142b"/><rect x="2" y="9" width="2" height="1" fill="#50557a"/><rect x="4" y="9" width="1" height="1" fill="#14142b"/><rect x="7" y="9" width="1" height="1" fill="#14142b"/><rect x="8" y="9" width="2" height="1" fill="#50557a"/><rect x="10" y="9" width="1" height="1" fill="#14142b"/><rect x="0" y="10" width="1" height="1" fill="#14142b"/><rect x="1" y="10" width="1" height="1" fill="#50557a"/><rect x="2" y="10" width="2" height="1" fill="#d6dcf0"/><rect x="4" y="10" width="1" height="1" fill="#50557a"/><rect x="5" y="10" width="2" height="1" fill="#14142b"/><rect x="7" y="10" width="1" height="1" fill="#50557a"/><rect x="8" y="10" width="2" height="1" fill="#d6dcf0"/><rect x="10" y="10" width="1" height="1" fill="#50557a"/><rect x="11" y="10" width="1" height="1" fill="#14142b"/><rect x="1" y="11" width="4" height="1" fill="#14142b"/><rect x="7" y="11" width="4" height="1" fill="#14142b"/></symbol>
     <symbol id="icon-flyer" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="5" y="1" width="2" height="1" fill="#14142b"/><rect x="4" y="2" width="1" height="1" fill="#14142b"/><rect x="5" y="2" width="2" height="1" fill="#ffffff"/><rect x="7" y="2" width="1" height="1" fill="#14142b"/><rect x="4" y="3" width="1" height="1" fill="#14142b"/><rect x="5" y="3" width="2" height="1" fill="#3ff0f0"/><rect x="7" y="3" width="1" height="1" fill="#14142b"/><rect x="0" y="4" width="2" height="1" fill="#14142b"/><rect x="4" y="4" width="1" height="1" fill="#14142b"/><rect x="5" y="4" width="2" height="1" fill="#ff3b4f"/><rect x="7" y="4" width="1" height="1" fill="#14142b"/><rect x="10" y="4" width="2" height="1" fill="#14142b"/><rect x="0" y="5" width="1" height="1" fill="#14142b"/><rect x="1" y="5" width="1" height="1" fill="#ffffff"/><rect x="2" y="5" width="3" height="1" fill="#14142b"/><rect x="5" y="5" width="2" height="1" fill="#ff3b4f"/><rect x="7" y="5" width="3" height="1" fill="#14142b"/><rect x="10" y="5" width="1" height="1" fill="#ffffff"/><rect x="11" y="5" width="1" height="1" fill="#14142b"/><rect x="0" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="6" width="4" height="1" fill="#ffffff"/><rect x="5" y="6" width="2" height="1" fill="#ff3b4f"/><rect x="7" y="6" width="4" height="1" fill="#ffffff"/><rect x="11" y="6" width="1" height="1" fill="#14142b"/><rect x="0" y="7" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="3" height="1" fill="#d6dcf0"/><rect x="4" y="7" width="1" height="1" fill="#14142b"/><rect x="5" y="7" width="2" height="1" fill="#ff3b4f"/><rect x="7" y="7" width="1" height="1" fill="#14142b"/><rect x="8" y="7" width="3" height="1" fill="#d6dcf0"/><rect x="11" y="7" width="1" height="1" fill="#14142b"/><rect x="1" y="8" width="4" height="1" fill="#14142b"/><rect x="5" y="8" width="2" height="1" fill="#ff3b4f"/><rect x="7" y="8" width="4" height="1" fill="#14142b"/><rect x="4" y="9" width="1" height="1" fill="#14142b"/><rect x="5" y="9" width="2" height="1" fill="#ffe23a"/><rect x="7" y="9" width="1" height="1" fill="#14142b"/><rect x="4" y="10" width="4" height="1" fill="#14142b"/></symbol>
-    <symbol id="icon-missile" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="8" y="0" width="3" height="1" fill="#14142b"/><rect x="7" y="1" width="1" height="1" fill="#14142b"/><rect x="8" y="1" width="3" height="1" fill="#ff3b4f"/><rect x="11" y="1" width="1" height="1" fill="#14142b"/><rect x="6" y="2" width="1" height="1" fill="#14142b"/><rect x="7" y="2" width="1" height="1" fill="#ff3b4f"/><rect x="8" y="2" width="1" height="1" fill="#ffffff"/><rect x="9" y="2" width="2" height="1" fill="#ff3b4f"/><rect x="11" y="2" width="1" height="1" fill="#14142b"/><rect x="5" y="3" width="1" height="1" fill="#14142b"/><rect x="6" y="3" width="1" height="1" fill="#d6dcf0"/><rect x="7" y="3" width="2" height="1" fill="#ffffff"/><rect x="9" y="3" width="1" height="1" fill="#ff3b4f"/><rect x="10" y="3" width="1" height="1" fill="#14142b"/><rect x="4" y="4" width="1" height="1" fill="#14142b"/><rect x="5" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="6" y="4" width="2" height="1" fill="#ffffff"/><rect x="8" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="9" y="4" width="1" height="1" fill="#14142b"/><rect x="3" y="5" width="1" height="1" fill="#14142b"/><rect x="4" y="5" width="1" height="1" fill="#d6dcf0"/><rect x="5" y="5" width="2" height="1" fill="#ffffff"/><rect x="7" y="5" width="1" height="1" fill="#d6dcf0"/><rect x="8" y="5" width="1" height="1" fill="#14142b"/><rect x="2" y="6" width="1" height="1" fill="#14142b"/><rect x="3" y="6" width="4" height="1" fill="#d6dcf0"/><rect x="7" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="1" height="1" fill="#14142b"/><rect x="2" y="7" width="2" height="1" fill="#ff3b4f"/><rect x="4" y="7" width="1" height="1" fill="#14142b"/><rect x="5" y="7" width="1" height="1" fill="#d6dcf0"/><rect x="6" y="7" width="1" height="1" fill="#14142b"/><rect x="0" y="8" width="1" height="1" fill="#14142b"/><rect x="1" y="8" width="1" height="1" fill="#ff9a1a"/><rect x="2" y="8" width="1" height="1" fill="#ffe23a"/><rect x="3" y="8" width="1" height="1" fill="#ff9a1a"/><rect x="4" y="8" width="2" height="1" fill="#14142b"/><rect x="1" y="9" width="1" height="1" fill="#14142b"/><rect x="2" y="9" width="2" height="1" fill="#ffe23a"/><rect x="4" y="9" width="1" height="1" fill="#ff9a1a"/><rect x="5" y="9" width="1" height="1" fill="#14142b"/><rect x="2" y="10" width="1" height="1" fill="#14142b"/><rect x="3" y="10" width="1" height="1" fill="#ff9a1a"/><rect x="4" y="10" width="1" height="1" fill="#14142b"/><rect x="3" y="11" width="1" height="1" fill="#14142b"/></symbol>
+    <symbol id="icon-missile" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="8" y="0" width="3" height="1" fill="#14142b"/><rect x="7" y="1" width="1" height="1" fill="#14142b"/><rect x="8" y="1" width="3" height="1" fill="#ff3b4f"/><rect x="11" y="1" width="1" height="1" fill="#14142b"/><rect x="6" y="2" width="1" height="1" fill="#14142b"/><rect x="7" y="2" width="1" height="1" fill="#ff3b4f"/><rect x="8" y="2" width="1" height="1" fill="#ffffff"/><rect x="9" y="2" width="2" height="1" fill="#ff3b4f"/><rect x="11" y="2" width="1" height="1" fill="#14142b"/><rect x="5" y="3" width="1" height="1" fill="#14142b"/><rect x="6" y="3" width="1" height="1" fill="#d6dcf0"/><rect x="7" y="3" width="2" height="1" fill="#ffffff"/><rect x="9" y="3" width="1" height="1" fill="#ff3b4f"/><rect x="10" y="3" width="1" height="1" fill="#14142b"/><rect x="4" y="4" width="1" height="1" fill="#14142b"/><rect x="5" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="6" y="4" width="2" height="1" fill="#ffffff"/><rect x="8" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="9" y="4" width="1" height="1" fill="#14142b"/><rect x="3" y="5" width="1" height="1" fill="#14142b"/><rect x="4" y="5" width="1" height="1" fill="#d6dcf0"/><rect x="5" y="5" width="2" height="1" fill="#ffffff"/><rect x="7" y="5" width="1" height="1" fill="#d6dcf0"/><rect x="8" y="5" width="1" height="1" fill="#14142b"/><rect x="2" y="6" width="1" height="1" fill="#14142b"/><rect x="3" y="6" width="4" height="1" fill="#d6dcf0"/><rect x="7" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="1" height="1" fill="#14142b"/><rect x="2" y="7" width="2" height="1" fill="#ff3b4f"/><rect x="4" y="7" width="1" height="1" fill="#14142b"/><rect x="5" y="7" width="1" height="1" fill="#d6dcf0"/><rect x="6" y="7" width="1" height="1" fill="#14142b"/><rect x="0" y="8" width="1" height="1" fill="#14142b"/><rect x="1" y="8" width="1" height="1" fill="#ff9a1a"/><rect x="2" y="8" width="1" height="1" fill="#ffe23a"/><rect x="3" y="8" width="1" height="1" fill="#ff9a1a"/><rect x="4" y="8" width="2" height="1" fill="#14142b"/><rect x="1" y="9" width="1" height="1" fill="#14142b"/><rect x="2" y="9" width="2" height="1" fill="#ffe23a"/><rect x="4" y="9" width="1" height="1" fill="#ff9a1a"/><rect x="5" y="9" width="1" height="1" fill="#14142b"/><rect x="2" y="10" width="1" height="1" fill="#14142b"/><rect x="3" y="10" width="1" height="1" fill="#ff9a1a"/><rect x="4" y="10" width="1" height="1" fill="#14142b"/><rect x="3" y="11" width="1" height="1" fill="#14142b"/></symbol><symbol id="icon-jeep" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="4" y="2" width="4" height="1" fill="#14142b"/><rect x="3" y="3" width="1" height="1" fill="#14142b"/><rect x="4" y="3" width="4" height="1" fill="#bfe3ff"/><rect x="8" y="3" width="1" height="1" fill="#14142b"/><rect x="2" y="4" width="2" height="1" fill="#14142b"/><rect x="4" y="4" width="4" height="1" fill="#4f7a34"/><rect x="8" y="4" width="2" height="1" fill="#14142b"/><rect x="1" y="5" width="1" height="1" fill="#14142b"/><rect x="2" y="5" width="8" height="1" fill="#4f7a34"/><rect x="10" y="5" width="1" height="1" fill="#14142b"/><rect x="1" y="6" width="1" height="1" fill="#14142b"/><rect x="2" y="6" width="1" height="1" fill="#4f7a34"/><rect x="3" y="6" width="6" height="1" fill="#8bbd54"/><rect x="9" y="6" width="1" height="1" fill="#4f7a34"/><rect x="10" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="1" height="1" fill="#14142b"/><rect x="2" y="7" width="8" height="1" fill="#4f7a34"/><rect x="10" y="7" width="1" height="1" fill="#14142b"/><rect x="2" y="8" width="8" height="1" fill="#14142b"/><rect x="2" y="9" width="1" height="1" fill="#14142b"/><rect x="3" y="9" width="2" height="1" fill="#2b2b33"/><rect x="5" y="9" width="2" height="1" fill="#14142b"/><rect x="7" y="9" width="2" height="1" fill="#2b2b33"/><rect x="9" y="9" width="1" height="1" fill="#14142b"/><rect x="3" y="10" width="2" height="1" fill="#2b2b33"/><rect x="7" y="10" width="2" height="1" fill="#2b2b33"/></symbol><symbol id="icon-commando" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="4" y="0" width="4" height="1" fill="#14142b"/><rect x="3" y="1" width="1" height="1" fill="#14142b"/><rect x="4" y="1" width="4" height="1" fill="#4f7a34"/><rect x="8" y="1" width="1" height="1" fill="#14142b"/><rect x="3" y="2" width="1" height="1" fill="#14142b"/><rect x="4" y="2" width="4" height="1" fill="#e8b98a"/><rect x="8" y="2" width="1" height="1" fill="#14142b"/><rect x="4" y="3" width="1" height="1" fill="#14142b"/><rect x="5" y="3" width="2" height="1" fill="#e8b98a"/><rect x="7" y="3" width="1" height="1" fill="#14142b"/><rect x="2" y="4" width="2" height="1" fill="#14142b"/><rect x="4" y="4" width="4" height="1" fill="#4f7a34"/><rect x="8" y="4" width="2" height="1" fill="#14142b"/><rect x="2" y="5" width="1" height="1" fill="#14142b"/><rect x="3" y="5" width="6" height="1" fill="#4f7a34"/><rect x="9" y="5" width="3" height="1" fill="#2b2b33"/><rect x="2" y="6" width="1" height="1" fill="#14142b"/><rect x="3" y="6" width="6" height="1" fill="#4f7a34"/><rect x="9" y="6" width="1" height="1" fill="#14142b"/><rect x="3" y="7" width="1" height="1" fill="#14142b"/><rect x="4" y="7" width="4" height="1" fill="#4f7a34"/><rect x="8" y="7" width="1" height="1" fill="#14142b"/><rect x="3" y="8" width="1" height="1" fill="#14142b"/><rect x="4" y="8" width="1" height="1" fill="#4f7a34"/><rect x="5" y="8" width="2" height="1" fill="#14142b"/><rect x="7" y="8" width="1" height="1" fill="#4f7a34"/><rect x="8" y="8" width="1" height="1" fill="#14142b"/><rect x="3" y="9" width="1" height="1" fill="#14142b"/><rect x="4" y="9" width="1" height="1" fill="#2b2b33"/><rect x="5" y="9" width="1" height="1" fill="#14142b"/><rect x="7" y="9" width="1" height="1" fill="#14142b"/><rect x="8" y="9" width="1" height="1" fill="#2b2b33"/><rect x="9" y="9" width="1" height="1" fill="#14142b"/></symbol><symbol id="icon-medic" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="4" y="0" width="4" height="1" fill="#14142b"/><rect x="3" y="1" width="1" height="1" fill="#14142b"/><rect x="4" y="1" width="4" height="1" fill="#f4f4f4"/><rect x="8" y="1" width="1" height="1" fill="#14142b"/><rect x="3" y="2" width="1" height="1" fill="#14142b"/><rect x="4" y="2" width="4" height="1" fill="#e8b98a"/><rect x="8" y="2" width="1" height="1" fill="#14142b"/><rect x="4" y="3" width="1" height="1" fill="#14142b"/><rect x="5" y="3" width="2" height="1" fill="#e8b98a"/><rect x="7" y="3" width="1" height="1" fill="#14142b"/><rect x="2" y="4" width="2" height="1" fill="#14142b"/><rect x="4" y="4" width="4" height="1" fill="#f4f4f4"/><rect x="8" y="4" width="2" height="1" fill="#14142b"/><rect x="2" y="5" width="1" height="1" fill="#14142b"/><rect x="3" y="5" width="2" height="1" fill="#f4f4f4"/><rect x="5" y="5" width="2" height="1" fill="#e0314a"/><rect x="7" y="5" width="2" height="1" fill="#f4f4f4"/><rect x="9" y="5" width="1" height="1" fill="#14142b"/><rect x="2" y="6" width="1" height="1" fill="#14142b"/><rect x="3" y="6" width="1" height="1" fill="#f4f4f4"/><rect x="4" y="6" width="4" height="1" fill="#e0314a"/><rect x="8" y="6" width="1" height="1" fill="#f4f4f4"/><rect x="9" y="6" width="1" height="1" fill="#14142b"/><rect x="2" y="7" width="1" height="1" fill="#14142b"/><rect x="3" y="7" width="2" height="1" fill="#f4f4f4"/><rect x="5" y="7" width="2" height="1" fill="#e0314a"/><rect x="7" y="7" width="2" height="1" fill="#f4f4f4"/><rect x="9" y="7" width="1" height="1" fill="#14142b"/><rect x="3" y="8" width="1" height="1" fill="#14142b"/><rect x="4" y="8" width="4" height="1" fill="#f4f4f4"/><rect x="8" y="8" width="1" height="1" fill="#14142b"/><rect x="3" y="9" width="1" height="1" fill="#14142b"/><rect x="4" y="9" width="1" height="1" fill="#2b2b33"/><rect x="5" y="9" width="2" height="1" fill="#14142b"/><rect x="7" y="9" width="1" height="1" fill="#2b2b33"/><rect x="8" y="9" width="1" height="1" fill="#14142b"/></symbol><symbol id="icon-submarine" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="7" y="1" width="2" height="1" fill="#14142b"/><rect x="7" y="2" width="1" height="1" fill="#14142b"/><rect x="8" y="2" width="1" height="1" fill="#2b2b33"/><rect x="9" y="2" width="1" height="1" fill="#14142b"/><rect x="4" y="3" width="7" height="1" fill="#14142b"/><rect x="2" y="4" width="2" height="1" fill="#14142b"/><rect x="4" y="4" width="7" height="1" fill="#5b6b82"/><rect x="11" y="4" width="1" height="1" fill="#14142b"/><rect x="1" y="5" width="1" height="1" fill="#14142b"/><rect x="2" y="5" width="2" height="1" fill="#5b6b82"/><rect x="4" y="5" width="4" height="1" fill="#8ea0b8"/><rect x="8" y="5" width="3" height="1" fill="#5b6b82"/><rect x="11" y="5" width="1" height="1" fill="#14142b"/><rect x="0" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="6" width="10" height="1" fill="#5b6b82"/><rect x="11" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="1" height="1" fill="#14142b"/><rect x="2" y="7" width="8" height="1" fill="#5b6b82"/><rect x="10" y="7" width="1" height="1" fill="#14142b"/><rect x="2" y="8" width="8" height="1" fill="#14142b"/><rect x="0" y="9" width="12" height="1" fill="#2f78c4"/></symbol><symbol id="icon-poo" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="5" y="0" width="2" height="1" fill="#3b200c"/><rect x="4" y="1" width="1" height="1" fill="#3b200c"/><rect x="5" y="1" width="2" height="1" fill="#8a5224"/><rect x="7" y="1" width="1" height="1" fill="#3b200c"/><rect x="3" y="2" width="1" height="1" fill="#3b200c"/><rect x="4" y="2" width="1" height="1" fill="#8a5224"/><rect x="5" y="2" width="1" height="1" fill="#b27a3e"/><rect x="6" y="2" width="2" height="1" fill="#8a5224"/><rect x="8" y="2" width="1" height="1" fill="#3b200c"/><rect x="4" y="3" width="1" height="1" fill="#3b200c"/><rect x="5" y="3" width="2" height="1" fill="#8a5224"/><rect x="7" y="3" width="1" height="1" fill="#3b200c"/><rect x="2" y="4" width="2" height="1" fill="#3b200c"/><rect x="4" y="4" width="4" height="1" fill="#8a5224"/><rect x="8" y="4" width="2" height="1" fill="#3b200c"/><rect x="1" y="5" width="1" height="1" fill="#3b200c"/><rect x="2" y="5" width="2" height="1" fill="#8a5224"/><rect x="4" y="5" width="1" height="1" fill="#b27a3e"/><rect x="5" y="5" width="5" height="1" fill="#8a5224"/><rect x="10" y="5" width="1" height="1" fill="#3b200c"/><rect x="2" y="6" width="1" height="1" fill="#3b200c"/><rect x="3" y="6" width="6" height="1" fill="#8a5224"/><rect x="9" y="6" width="1" height="1" fill="#3b200c"/><rect x="1" y="7" width="1" height="1" fill="#3b200c"/><rect x="2" y="7" width="8" height="1" fill="#8a5224"/><rect x="10" y="7" width="1" height="1" fill="#3b200c"/><rect x="0" y="8" width="1" height="1" fill="#3b200c"/><rect x="1" y="8" width="2" height="1" fill="#8a5224"/><rect x="3" y="8" width="1" height="1" fill="#b27a3e"/><rect x="4" y="8" width="7" height="1" fill="#8a5224"/><rect x="11" y="8" width="1" height="1" fill="#3b200c"/><rect x="0" y="9" width="1" height="1" fill="#3b200c"/><rect x="1" y="9" width="1" height="1" fill="#8a5224"/><rect x="2" y="9" width="1" height="1" fill="#ffffff"/><rect x="3" y="9" width="1" height="1" fill="#14142b"/><rect x="4" y="9" width="4" height="1" fill="#8a5224"/><rect x="8" y="9" width="1" height="1" fill="#ffffff"/><rect x="9" y="9" width="1" height="1" fill="#14142b"/><rect x="10" y="9" width="1" height="1" fill="#8a5224"/><rect x="11" y="9" width="1" height="1" fill="#3b200c"/><rect x="0" y="10" width="1" height="1" fill="#3b200c"/><rect x="1" y="10" width="1" height="1" fill="#8a5224"/><rect x="2" y="10" width="1" height="1" fill="#ffffff"/><rect x="3" y="10" width="1" height="1" fill="#14142b"/><rect x="4" y="10" width="4" height="1" fill="#8a5224"/><rect x="8" y="10" width="1" height="1" fill="#ffffff"/><rect x="9" y="10" width="1" height="1" fill="#14142b"/><rect x="10" y="10" width="1" height="1" fill="#8a5224"/><rect x="11" y="10" width="1" height="1" fill="#3b200c"/><rect x="0" y="11" width="2" height="1" fill="#3b200c"/><rect x="2" y="11" width="8" height="1" fill="#8a5224"/><rect x="10" y="11" width="2" height="1" fill="#3b200c"/></symbol>
     <symbol id="icon-base" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="5" y="0" width="4" height="1" fill="#14142b"/><rect x="5" y="1" width="1" height="1" fill="#14142b"/><rect x="6" y="1" width="3" height="1" fill="#ff3b4f"/><rect x="9" y="1" width="1" height="1" fill="#14142b"/><rect x="5" y="2" width="4" height="1" fill="#14142b"/><rect x="5" y="3" width="1" height="1" fill="#14142b"/><rect x="6" y="3" width="1" height="1" fill="#d6dcf0"/><rect x="7" y="3" width="1" height="1" fill="#14142b"/><rect x="0" y="4" width="1" height="1" fill="#14142b"/><rect x="1" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="2" y="4" width="1" height="1" fill="#14142b"/><rect x="3" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="4" y="4" width="2" height="1" fill="#14142b"/><rect x="6" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="7" y="4" width="2" height="1" fill="#14142b"/><rect x="9" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="10" y="4" width="1" height="1" fill="#14142b"/><rect x="11" y="4" width="1" height="1" fill="#d6dcf0"/><rect x="0" y="5" width="1" height="1" fill="#14142b"/><rect x="1" y="5" width="2" height="1" fill="#d6dcf0"/><rect x="3" y="5" width="1" height="1" fill="#ffe23a"/><rect x="4" y="5" width="4" height="1" fill="#d6dcf0"/><rect x="8" y="5" width="1" height="1" fill="#ffe23a"/><rect x="9" y="5" width="2" height="1" fill="#d6dcf0"/><rect x="11" y="5" width="1" height="1" fill="#14142b"/><rect x="0" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="6" width="1" height="1" fill="#8a92b8"/><rect x="2" y="6" width="3" height="1" fill="#d6dcf0"/><rect x="5" y="6" width="2" height="1" fill="#50557a"/><rect x="7" y="6" width="3" height="1" fill="#d6dcf0"/><rect x="10" y="6" width="1" height="1" fill="#8a92b8"/><rect x="11" y="6" width="1" height="1" fill="#14142b"/><rect x="0" y="7" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="3" height="1" fill="#d6dcf0"/><rect x="4" y="7" width="4" height="1" fill="#50557a"/><rect x="8" y="7" width="3" height="1" fill="#d6dcf0"/><rect x="11" y="7" width="1" height="1" fill="#14142b"/><rect x="0" y="8" width="1" height="1" fill="#14142b"/><rect x="1" y="8" width="3" height="1" fill="#d6dcf0"/><rect x="4" y="8" width="4" height="1" fill="#50557a"/><rect x="8" y="8" width="3" height="1" fill="#d6dcf0"/><rect x="11" y="8" width="1" height="1" fill="#14142b"/><rect x="0" y="9" width="1" height="1" fill="#14142b"/><rect x="1" y="9" width="3" height="1" fill="#d6dcf0"/><rect x="4" y="9" width="4" height="1" fill="#50557a"/><rect x="8" y="9" width="3" height="1" fill="#d6dcf0"/><rect x="11" y="9" width="1" height="1" fill="#14142b"/><rect x="0" y="10" width="12" height="1" fill="#14142b"/></symbol>
     <symbol id="icon-barracks" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="5" y="0" width="1" height="1" fill="#14142b"/><rect x="6" y="0" width="2" height="1" fill="#ff3b4f"/><rect x="5" y="1" width="1" height="1" fill="#14142b"/><rect x="4" y="2" width="1" height="1" fill="#14142b"/><rect x="5" y="2" width="2" height="1" fill="#ff3b4f"/><rect x="7" y="2" width="1" height="1" fill="#14142b"/><rect x="3" y="3" width="1" height="1" fill="#14142b"/><rect x="4" y="3" width="4" height="1" fill="#ff3b4f"/><rect x="8" y="3" width="1" height="1" fill="#14142b"/><rect x="2" y="4" width="1" height="1" fill="#14142b"/><rect x="3" y="4" width="2" height="1" fill="#ff3b4f"/><rect x="5" y="4" width="1" height="1" fill="#b8183a"/><rect x="6" y="4" width="3" height="1" fill="#ff3b4f"/><rect x="9" y="4" width="1" height="1" fill="#14142b"/><rect x="1" y="5" width="1" height="1" fill="#14142b"/><rect x="2" y="5" width="8" height="1" fill="#ff3b4f"/><rect x="10" y="5" width="1" height="1" fill="#14142b"/><rect x="0" y="6" width="12" height="1" fill="#14142b"/><rect x="0" y="7" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="10" height="1" fill="#f4efe0"/><rect x="11" y="7" width="1" height="1" fill="#14142b"/><rect x="0" y="8" width="1" height="1" fill="#14142b"/><rect x="1" y="8" width="1" height="1" fill="#f4efe0"/><rect x="2" y="8" width="2" height="1" fill="#3d7bff"/><rect x="4" y="8" width="1" height="1" fill="#f4efe0"/><rect x="5" y="8" width="2" height="1" fill="#50557a"/><rect x="7" y="8" width="1" height="1" fill="#f4efe0"/><rect x="8" y="8" width="2" height="1" fill="#3d7bff"/><rect x="10" y="8" width="1" height="1" fill="#f4efe0"/><rect x="11" y="8" width="1" height="1" fill="#14142b"/><rect x="0" y="9" width="1" height="1" fill="#14142b"/><rect x="1" y="9" width="1" height="1" fill="#f4efe0"/><rect x="2" y="9" width="2" height="1" fill="#3d7bff"/><rect x="4" y="9" width="1" height="1" fill="#f4efe0"/><rect x="5" y="9" width="2" height="1" fill="#50557a"/><rect x="7" y="9" width="1" height="1" fill="#f4efe0"/><rect x="8" y="9" width="2" height="1" fill="#3d7bff"/><rect x="10" y="9" width="1" height="1" fill="#f4efe0"/><rect x="11" y="9" width="1" height="1" fill="#14142b"/><rect x="0" y="10" width="1" height="1" fill="#14142b"/><rect x="1" y="10" width="4" height="1" fill="#f4efe0"/><rect x="5" y="10" width="2" height="1" fill="#50557a"/><rect x="7" y="10" width="4" height="1" fill="#f4efe0"/><rect x="11" y="10" width="1" height="1" fill="#14142b"/><rect x="0" y="11" width="12" height="1" fill="#14142b"/></symbol>
     <symbol id="icon-foundry" viewBox="0 0 12 12" shape-rendering="crispEdges"><rect x="7" y="0" width="2" height="1" fill="#d6dcf0"/><rect x="6" y="1" width="2" height="1" fill="#d6dcf0"/><rect x="8" y="2" width="1" height="1" fill="#14142b"/><rect x="9" y="2" width="2" height="1" fill="#50557a"/><rect x="11" y="2" width="1" height="1" fill="#14142b"/><rect x="8" y="3" width="1" height="1" fill="#14142b"/><rect x="9" y="3" width="2" height="1" fill="#50557a"/><rect x="11" y="3" width="1" height="1" fill="#14142b"/><rect x="0" y="4" width="9" height="1" fill="#14142b"/><rect x="9" y="4" width="2" height="1" fill="#50557a"/><rect x="11" y="4" width="1" height="1" fill="#14142b"/><rect x="0" y="5" width="1" height="1" fill="#14142b"/><rect x="1" y="5" width="10" height="1" fill="#d17a2e"/><rect x="11" y="5" width="1" height="1" fill="#14142b"/><rect x="0" y="6" width="1" height="1" fill="#14142b"/><rect x="1" y="6" width="1" height="1" fill="#d17a2e"/><rect x="2" y="6" width="1" height="1" fill="#7d4015"/><rect x="3" y="6" width="2" height="1" fill="#d17a2e"/><rect x="5" y="6" width="1" height="1" fill="#7d4015"/><rect x="6" y="6" width="2" height="1" fill="#d17a2e"/><rect x="8" y="6" width="1" height="1" fill="#7d4015"/><rect x="9" y="6" width="2" height="1" fill="#d17a2e"/><rect x="11" y="6" width="1" height="1" fill="#14142b"/><rect x="0" y="7" width="1" height="1" fill="#14142b"/><rect x="1" y="7" width="3" height="1" fill="#d17a2e"/><rect x="4" y="7" width="4" height="1" fill="#ff9a1a"/><rect x="8" y="7" width="3" height="1" fill="#d17a2e"/><rect x="11" y="7" width="1" height="1" fill="#14142b"/><rect x="0" y="8" width="1" height="1" fill="#14142b"/><rect x="1" y="8" width="1" height="1" fill="#d17a2e"/><rect x="2" y="8" width="1" height="1" fill="#7d4015"/><rect x="3" y="8" width="1" height="1" fill="#d17a2e"/><rect x="4" y="8" width="1" height="1" fill="#ff9a1a"/><rect x="5" y="8" width="2" height="1" fill="#ffe23a"/><rect x="7" y="8" width="1" height="1" fill="#ff9a1a"/><rect x="8" y="8" width="1" height="1" fill="#d17a2e"/><rect x="9" y="8" width="1" height="1" fill="#7d4015"/><rect x="10" y="8" width="1" height="1" fill="#d17a2e"/><rect x="11" y="8" width="1" height="1" fill="#14142b"/><rect x="0" y="9" width="1" height="1" fill="#14142b"/><rect x="1" y="9" width="3" height="1" fill="#d17a2e"/><rect x="4" y="9" width="1" height="1" fill="#ff9a1a"/><rect x="5" y="9" width="2" height="1" fill="#ffe23a"/><rect x="7" y="9" width="1" height="1" fill="#ff9a1a"/><rect x="8" y="9" width="3" height="1" fill="#d17a2e"/><rect x="11" y="9" width="1" height="1" fill="#14142b"/><rect x="0" y="10" width="12" height="1" fill="#14142b"/></symbol>
@@ -491,6 +535,7 @@
 
 <div class="wrap" id="gameScreen" hidden>
   <div class="corner-actions">
+    <button class="icon-btn" id="hintBtn" title="Hint" aria-label="Hint" hidden><svg viewBox="0 0 24 24"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2z"/></svg></button>
     <button class="icon-btn" id="saveIconBtn" title="Save game" aria-label="Save game"><svg viewBox="0 0 24 24"><path d="M5 3h11l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm1 2v16h12V8.83L15.17 5H15v5H8V5H6zm4 0v3h3V5h-3zM7 14h10v2H7v-2zm0 4h10v2H7v-2z"/></svg></button>
     <button class="icon-btn" id="menuIconBtn" title="Main menu" aria-label="Main menu"><svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg></button>
   </div>
@@ -558,6 +603,12 @@
   </div>
 </div>
 
+<div class="hint-box" id="hintBox" hidden role="status" aria-live="polite">
+  <div class="hint-box-title">Hint</div>
+  <div id="hintText"></div>
+  <button class="cancel" id="hintCloseBtn">Got it</button>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <div class="result-overlay pass-device-overlay" id="passDeviceOverlay" hidden>
@@ -569,6 +620,17 @@
 </div>
 
 <div class="result-overlay" id="resultOverlay" hidden>
+  <div class="score-dock" id="scoreDock">
+    <div class="score-detail" id="scoreDetail" hidden>
+      <h3 id="scoreTitle"></h3>
+      <div id="scoreRows"></div>
+    </div>
+    <div class="score-line">
+      <button class="end-turn" id="scoreWhyBtn" style="width:auto;padding-inline:18px;">How did you get this score?</button>
+      <span class="score-pct" id="scorePct">0%</span>
+    </div>
+    <div class="score-bar"><div class="score-bar-fill" id="scoreBarFill"></div></div>
+  </div>
   <div class="result-card">
     <h2 id="resultTitle">Victory</h2>
     <p id="resultBody"></p>
@@ -688,7 +750,14 @@
 <div class="menu-overlay" id="howToPlayOverlay" hidden>
   <div class="menu-card">
     <h2 class="menu-heading">How to Play</h2>
-    <p class="howtoplay-text">You and the AI each start with one city, a Harvester, a Scout, and a Settler on a fogged, procedurally generated island map — every new game reshuffles the terrain, so scout before you commit. Harvesters parked on a goods tile add production; that shared production pool (plus a bonus for every extra city you found) funds your build queue, while research slowly unlocks stronger units and buildings. Move units around the grid and click an enemy unit or base within reach to see a Combat Analysis of damage dealt and taken before you confirm the attack — infantry counters vehicles, vehicles hit hard in the open, artillery is built to crack bases, and flyers ignore terrain entirely. Settlers found new cities on open, non-mountain ground away from existing ones; Frigates, Carriers, and Battleships (built from a coastal Shipyard) ferry land units across water to other islands. Scattered native camps are neutral until a Scout stands next to one — ask for peace to make that camp permanently safe, or strike a war plan (handing over a spare infantry unit as tribute) to turn its garrison into an ally that fights the AI for you. Starting turn 30, barbarian landing parties start arriving by Sail Boat and raid everyone — you, the AI, and the natives alike; watch for their Robbers especially, which sneak up to a city, steal one of your researched unlocks, and vanish rather than fight. Whoever loses every city loses the game; end your turn with the End Turn button once you've moved, built, and attacked for the round.</p>
+    <p class="howtoplay-text"><b>Goal:</b> destroy every enemy city. Lose all yours and you lose. Each side starts with a city, Harvester, Scout and Settler on a fogged, random map.</p>
+    <p class="howtoplay-text"><b>Economy:</b> Harvesters on goods tiles add production, as does each extra city. Production funds your build queue; research unlocks stronger units and buildings. Settlers found cities on open, non-mountain ground. Frigates, Carriers and Battleships (from a coastal Shipyard) ferry land units across water.</p>
+    <p class="howtoplay-text"><b>Combat:</b> click an enemy in reach to preview damage before confirming. Infantry counters vehicles, artillery cracks bases, flyers ignore terrain.</p>
+    <p class="howtoplay-text"><b>Terrain:</b> forests and mountains boost defense. Units in a forest can only be seen from an adjacent tile, and units on a mountain see one tile further. Leave a unit still for a full turn on forest or mountain and it digs in for +1 defense until it moves.</p>
+    <p class="howtoplay-text"><b>Natives:</b> a Scout next to a camp can ask for peace, or strike a war plan (costs a spare infantry unit) so its garrison fights the AI for you. Natives only attack those who attack them. You can break a peace treaty by attacking the camp, but then it hunts you.</p>
+    <p class="howtoplay-text"><b>Barbarians:</b> from turn 30 they raid everyone by Sail Boat. Their Robbers steal a researched unlock and vanish.</p>
+    <p class="howtoplay-text"><b>Multiplayer:</b> 2 players share one device. Pass it over at each handoff screen. Destroy the other player's cities first; natives and barbarians are secondary enemies.</p>
+    <p class="howtoplay-text">Press End Turn (or Enter) when done.</p>
     <button class="menu-btn" id="howToBackBtn">Back</button>
   </div>
 </div>
@@ -705,6 +774,7 @@
   <div class="menu-card">
     <h2 class="menu-heading">Local Multiplayer</h2>
     <p class="howtoplay-text" style="margin:0 0 4px;">2 players, one device — pass it over when it's the other player's turn. Online play from separate devices is coming soon.</p>
+    <p class="howtoplay-text" style="margin:0 0 4px;"><b>Goal:</b> destroy the other player's cities first. Natives and barbarians are secondary enemies to deal with after.</p>
     <label class="mp-label">Player 1 name</label>
     <input type="text" id="mpName1Input" class="mp-input" maxlength="20" placeholder="Player 1">
     <label class="mp-label">Player 2 name</label>
@@ -720,6 +790,7 @@
 (function () {
   // ---------- DATA ----------
   var BUILDER_REPAIR_HP = 3;
+  var MEDIC_HEAL_HP = 2;
   var UNIT_TYPES = {
     harvester: { id: "harvester", name: "Harvester", short: "HV", category: "economy", domain: "land", attack: 4, defense: 1, hp: 8, movement: 2, cost: 4, attackOnly: "infantry", defenseBonusVs: { infantry: 5 }, notes: "Unarmored, but its bulk can run over an adjacent enemy Infantry unit — can't target anything else. Takes very little damage back from the Infantry it tramples; still fragile against everything else." },
     builder: { id: "builder", name: "Builder", short: "BL", category: "economy", domain: "land", attack: 0, defense: 1, hp: 6, movement: 2, cost: 4, notes: "Unarmed. Sit it next to a damaged friendly city and it repairs " + BUILDER_REPAIR_HP + " HP of that city's walls every turn (never above the city's max HP)." },
@@ -730,7 +801,7 @@
     antiArmorInfantry: { id: "antiArmorInfantry", name: "Anti-Armor Infantry", short: "AA", category: "infantry", domain: "land", attack: 3, defense: 4, hp: 9, movement: 1, cost: 3, attackBonusVs: {}, armorPenetrationVs: { vehicle: 3 } },
     lightVehicle: { id: "lightVehicle", name: "Light Vehicle", short: "LV", category: "vehicle", domain: "land", attack: 5, defense: 2, hp: 8, movement: 3, cost: 4, attackBonusVs: { infantry: 1.5 } },
     heavyVehicle: { id: "heavyVehicle", name: "Heavy Vehicle", short: "HV2", category: "vehicle", domain: "land", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, attackBonusVs: { infantry: 1.25 } },
-    artillery: { id: "artillery", name: "Artillery", short: "AR", category: "siege", domain: "land", attack: 10, defense: 1, hp: 6, movement: 1, cost: 7, attackBonusVs: {} },
+    artillery: { id: "artillery", name: "Artillery", short: "AR", category: "siege", domain: "land", attack: 10, defense: 1, hp: 6, movement: 1, cost: 9, attackBonusVs: {} },
     flyer: { id: "flyer", name: "Ornithopter", short: "OR", category: "air", domain: "land", attack: 5, defense: 2, hp: 7, movement: 5, cost: 9, attackBonusVs: {}, notes: "Ignores terrain entirely, ocean included — it never needs a ship to cross water. Any enemy ship (or other unit) adjacent to it can still attack it while it's over open water, same as anywhere else." },
     // Player-exclusive — see the tech tree's playerOnly flag on the tech
     // that unlocks it (Guided Missiles) and tickFaction, which refuses to
@@ -741,6 +812,16 @@
     // at the TARGET's tile — +50% attack against a unit or city standing on
     // a mountain (see computeDamage/previewCombat).
     missile: { id: "missile", name: "Missile", short: "MS", category: "air", domain: "land", attack: 14, defense: 2, hp: 6, movement: 5, cost: 55, attackBonusVs: {}, attackTerrainBonus: { mountain: 0.5 }, oneTimeUse: true, notes: "Player-only. Flies over any terrain, ocean included, same as an Ornithopter. Deals 50% more damage when striking a unit or city that's standing on a mountain. One-time use — it's spent and disappears the instant it attacks, hit or miss, whether the target is a unit, a city, or natives. Immune to Anti-Air Batteries — no enemy city's anti-air defense can shoot it down before it hits." },
+    // Player-only, unlocked by the Ultimate Destruction tech. Absurd attack, modest defense.
+    poo: { id: "poo", name: "Poo", short: "PO", category: "vehicle", domain: "land", attack: 999999999, defense: 15, hp: 20, movement: 2, cost: 867, attackBonusVs: {}, notes: "Player-only. Unlocked by Ultimate Destruction. Hits for 999999999." },
+    // Added units. Raider Jeep: fast and flimsy, shreds Harvesters/Settlers.
+    jeep: { id: "jeep", name: "Raider Jeep", short: "RJ", category: "vehicle", domain: "land", attack: 4, defense: 1, hp: 6, movement: 5, cost: 5, attackBonusVs: { economy: 2 }, notes: "Very fast raider. Hits economy units (Harvesters, Settlers, Builders) twice as hard." },
+    // Medic: unarmed; heals friendly units standing next to it each turn.
+    medic: { id: "medic", name: "Medic", short: "MD", category: "infantry", domain: "land", attack: 0, defense: 1, hp: 6, movement: 2, cost: 5, notes: "Unarmed. Heals " + MEDIC_HEAL_HP + " HP on every friendly unit next to it at the end of each turn." },
+    // Commando: shoots from 2 tiles away, and a target that isn't also ranged can't hit back.
+    commando: { id: "commando", name: "Commando", short: "CM", category: "infantry", domain: "land", attack: 7, defense: 1, hp: 5, movement: 2, cost: 7, range: 2, attackBonusVs: {}, notes: "Attacks from up to 2 tiles away; targets that aren't ranged can't hit back at that distance. Fragile up close." },
+    // Submarine: hunts ships only, and can't be seen unless an enemy is next to it.
+    submarine: { id: "submarine", name: "Submarine", short: "SM", category: "naval", domain: "naval", attack: 8, defense: 3, hp: 12, movement: 3, cost: 45, attackOnly: "naval", attackBonusVs: {}, notes: "Attacks ships only. Hidden from enemies unless one is on an adjacent tile." },
     frigate: { id: "frigate", name: "Frigate", short: "FR", category: "naval", domain: "naval", attack: 6, defense: 4, hp: 10, movement: 4, cost: 30, capacity: 3, attackBonusVs: {}, notes: "One is pre-placed per side at the start; after that it's built at a coastal city with a Shipyard. Carries up to 3 cargo slots (a Settler takes 2); if it sinks, everything aboard sinks with it." },
     carrier: { id: "carrier", name: "Carrier", short: "CV", category: "naval", domain: "naval", attack: 2, defense: 7, hp: 16, movement: 3, cost: 40, capacity: 5, attackBonusVs: {}, notes: "Weak offense, but a tough hull built to ferry troops — 5 cargo slots (a Settler takes 2)." },
     battleship: { id: "battleship", name: "Battleship", short: "BB", category: "naval", domain: "naval", attack: 10, defense: 10, hp: 22, movement: 3, cost: 80, capacity: 1, attackBonusVs: {}, notes: "The heaviest warship afloat. Only 1 cargo slot — too tight for a Settler (needs 2)." },
@@ -766,7 +847,7 @@
   var BASE_STATS = { name: "Base", attack: 0, defense: 5, hp: 20, category: "base" };
   // A native camp fights back on its own — much tougher than an ordinary
   // city, which has no attack of its own and relies entirely on its garrison.
-  var NATIVE_CAMP_STATS = { name: "Native Camp", attack: 5, defense: 5, hp: 20, category: "base" };
+  var NATIVE_CAMP_STATS = { name: "Native Camp", attack: 5, defense: 2, hp: 20, category: "base" };
   var NATIVE_CAMP_MAX = 6; // hard cap on how many native camps ever exist on the map
   // Weighted so most camps are lightly held, with an occasional armed,
   // mounted, or tank-garrisoned camp to keep raiding them risky.
@@ -806,14 +887,15 @@
   }
 
   var TECHS = [
-    { id: "tech1", name: "Armor Piercing", cost: 6, unlocks: ["antiArmorInfantry", "lightVehicle"] },
-    { id: "tech2", name: "Heavy Fabrication", cost: 14, unlocks: ["heavyVehicle", "artillery"] },
+    { id: "tech1", name: "Armor Piercing", cost: 6, unlocks: ["antiArmorInfantry", "lightVehicle", "jeep"] },
+    { id: "tech2", name: "Heavy Fabrication", cost: 14, unlocks: ["heavyVehicle", "artillery", "medic", "commando"] },
     { id: "tech3", name: "Flight", cost: 24, unlocks: ["flyer"] },
     // playerOnly: the AI (and, in principle, any other faction that ever ran
     // through TECHS) never actually completes this tier — see tickFaction,
     // which stops advancing techIndex here for anyone but the player. Its
     // research keeps accruing past this point, it just never spends it.
-    { id: "tech4", name: "Guided Missiles", cost: 30, unlocks: ["missile"], playerOnly: true }
+    { id: "tech4", name: "Guided Missiles", cost: 30, unlocks: ["missile"], playerOnly: true },
+    { id: "tech5", name: "Ultimate Destruction", cost: 60, unlocks: ["poo"], playerOnly: true }
   ];
   var STARTING_UNLOCKS = ["harvester", "scout", "settler", "lightInfantry", "builder"];
   var MIN_CITY_DISTANCE = 4; // Chebyshev tiles a new city must keep from every existing city
@@ -822,7 +904,7 @@
   var BUILDING_TYPES = {
     barracks: { id: "barracks", name: "Barracks", cost: 10, prodBonus: 2, desc: "+2 production per turn." },
     foundry: { id: "foundry", name: "Foundry", cost: 20, prodBonus: 3, desc: "+3 production per turn." },
-    shipyard: { id: "shipyard", name: "Shipyard", cost: 60, prodBonus: 0, desc: "Unlocks Frigates, Carriers, and Battleships. Requires a coastal city.", grantsUnlocks: ["frigate", "carrier", "battleship"] },
+    shipyard: { id: "shipyard", name: "Shipyard", cost: 60, prodBonus: 0, desc: "Unlocks Frigates, Carriers, Battleships, and Submarines. Requires a coastal city.", grantsUnlocks: ["frigate", "carrier", "battleship", "submarine"] },
     antiAir: { id: "antiAir", name: "Anti-Air Battery", cost: 200, prodBonus: 0, desc: "Every one of your cities automatically fires on any enemy flying unit adjacent to it, every turn, for " + ANTI_AIR_DAMAGE + " damage." }
   };
   var BUILDING_ORDER = ["barracks", "foundry", "shipyard", "antiAir"];
@@ -1179,6 +1261,14 @@
     if (terrain === "forest") return 2;
     return 0;
   }
+  // Dug in: a unit that sat still through a whole turn on forest or mountain
+  // (unit.dugAt is stamped at end of turn, see tickFaction) gets +1 defense
+  // for as long as it stays on that tile. Plains offer nothing to dig into.
+  function dugInBonus(u) {
+    if (!u.dugAt || u.dugAt[0] !== u.x || u.dugAt[1] !== u.y) return 0;
+    var t = terrainAt(u.x, u.y);
+    return (t === "forest" || t === "mountain") ? 1 : 0;
+  }
   function terrainLabel(terrain) {
     return terrain === "water" ? "River" : terrain === "mountain" ? "Mountain" : terrain === "forest" ? "Forest" : "Plain";
   }
@@ -1242,7 +1332,7 @@
     return {
       id: "c" + (state.nextCityId++), x: x, y: y, hp: st.hp, maxHp: st.hp, attack: st.attack, defense: st.defense,
       alive: true, isCamp: kind === "camp", isBarbarianCity: kind === "barbarian",
-      pact: null, aiPact: null, startledByAi: false, hasInnerArtillery: !!hasInnerArtillery
+      pact: null, aiPact: null, startledByAi: false, startledByPlayer: false, startledByBarbarians: false, hasInnerArtillery: !!hasInnerArtillery
     };
   }
   function foundCity(f, x, y, kind) {
@@ -1253,6 +1343,7 @@
     // have a permanent, unearned defensive edge over the other.
     var c = makeCity(x, y, kind, (f.id === "player" || state.hotseat) && !kind);
     f.bases.push(c);
+    if (!kind && f.stats) f.stats.citiesOwned++;
     return c;
   }
   function isValidCitySite(x, y) {
@@ -1280,7 +1371,8 @@
       // lives on the faction object itself so it travels automatically with
       // whichever human owns this data when swapHotseatSeats swaps who's
       // sitting in the "player" vs "ai" slot.
-      displayName: null
+      displayName: null,
+      stats: newStats()
     };
   }
 
@@ -1405,7 +1497,7 @@
   // startled into defensive hostility against the AI, won't hear out the
   // other side's Scout at all.
   function campWillNegotiateWith(camp, side) {
-    if (side === "player") return camp.aiPact !== "war";
+    if (side === "player") return camp.aiPact !== "war" && !camp.startledByPlayer;
     return camp.pact !== "war" && !camp.startledByAi;
   }
   // The living native camp (if any) adjacent to a unit's own tile.
@@ -1477,6 +1569,22 @@
     addLog("The natives' " + cityLabel(state.natives, camp) + " are startled into war against the AI.");
   }
 
+  // Natives only ever fight back: any side that lands a hit on a camp or its
+  // garrison (the player, the AI, or barbarians) is marked, and from then on
+  // that camp's garrison hunts that side.
+  function provokeCamp(camp, attackerOwner) {
+    if (!camp) return;
+    if (attackerOwner === "ai") startleCampAgainstAi(camp);
+    else if (attackerOwner === "player") {
+      if (camp.startledByPlayer) return;
+      camp.startledByPlayer = true;
+      if (camp.pact === "peace") camp.pact = null;
+      addLog("The natives' " + cityLabel(state.natives, camp) + " turn on you.");
+    } else if (attackerOwner === "barbarians") {
+      camp.startledByBarbarians = true;
+    }
+  }
+
   // Nearest living camp the AI hasn't yet settled anything with — used to
   // give the AI's Scout somewhere to actually walk toward, the same way a
   // player would explore toward one.
@@ -1511,36 +1619,32 @@
     state.natives.units.slice().forEach(function (u) {
       if (u.hp <= 0) return;
       var camp = u.campId ? campById(u.campId) : null;
-      var huntsAi = u.atWar || (camp && camp.startledByAi);
-      var huntsPlayer = !!u.atWarVsPlayer;
-      if (!huntsAi && !huntsPlayer) return;
-      // A unit hostile to both sides at once (theoretically possible only
-      // if it were startled while also AI-war-pacted, which
-      // campWillNegotiateWith prevents) prefers whichever enemy is closer.
-      var targetFactionId = huntsAi && huntsPlayer
-        ? (function () {
-            var da = nearestFactionTarget(u, "ai");
-            var dp = nearestFactionTarget(u, "player");
-            if (!da) return "player";
-            if (!dp) return "ai";
-            var distTo = function (t) { return Math.abs(t[0] - u.x) + Math.abs(t[1] - u.y); };
-            return distTo(da) <= distTo(dp) ? "ai" : "player";
-          })()
-        : (huntsAi ? "ai" : "player");
+      var enemies = [];
+      if (u.atWar || (camp && camp.startledByAi)) enemies.push("ai");
+      if (u.atWarVsPlayer || (camp && camp.startledByPlayer)) enemies.push("player");
+      if (camp && camp.startledByBarbarians) enemies.push("barbarians");
+      if (!enemies.length) return;
+      var distTo = function (t) { return Math.abs(t[0] - u.x) + Math.abs(t[1] - u.y); };
+      // With several enemies at once, go for whichever is closest.
+      var targetFactionId = null, target = null, bestD = Infinity;
+      enemies.forEach(function (fid) {
+        var t = nearestFactionTarget(u, fid);
+        if (t && distTo(t) < bestD) { bestD = distTo(t); target = t; targetFactionId = fid; }
+      });
+      if (!target) return;
 
       var reachable = reachableTiles(u);
       var attackable = attackableTiles(u, reachable).filter(function (t) {
         var eu = unitAt(t[0], t[1]);
         var eb = baseAt(t[0], t[1]);
-        return (eu && eu.owner === targetFactionId) || (eb && eb.id === targetFactionId);
+        return (eu && enemies.indexOf(eu.owner) !== -1) || (eb && enemies.indexOf(eb.id) !== -1);
       });
       if (attackable.length) {
         var t = pickWeakestTarget(attackable);
         resolveUnitAttack(u, t[0], t[1]);
         return;
       }
-      var target = nearestFactionTarget(u, targetFactionId);
-      if (target) moveToward(u, target[0], target[1]);
+      moveToward(u, target[0], target[1]);
       u.acted = true;
     });
   }
@@ -1903,6 +2007,7 @@
     state.ai.units.forEach(function (u) { u.owner = "ai"; });
     state.natives.bases.forEach(function (c) {
       var p = c.pact; c.pact = c.aiPact; c.aiPact = p;
+      var sp = !!c.startledByPlayer; c.startledByPlayer = !!c.startledByAi; c.startledByAi = sp;
     });
     state.natives.units.forEach(function (u) {
       var w = !!u.atWar, wv = !!u.atWarVsPlayer;
@@ -1934,6 +2039,13 @@
         var x = cx + dx, y = cy + dy;
         if (!inBoundsRaw(x, y)) continue;
         f.explored[y][x] = true;
+        // Forest cover: an enemy unit hiding in a forest can only be spotted
+        // from an adjacent tile, however far the viewer can otherwise see.
+        // Submarines hide the same way, in open water.
+        if (Math.max(Math.abs(dx), Math.abs(dy)) > 1 && terrainAt(x, y) !== "plain" && terrainAt(x, y) !== "mountain") {
+          var hidden = unitAt(x, y);
+          if (hidden && hidden.owner !== f.id && (terrainAt(x, y) === "forest" || hidden.typeId === "submarine")) continue;
+        }
         f.visible[y][x] = true;
       }
     }
@@ -1941,7 +2053,8 @@
   function updateVisionFor(f) {
     f.visible = makeVisionGrid();
     f.units.forEach(function (u) {
-      revealAround(f, u.x, u.y, u.typeId === "scout" ? 3 : 1);
+      // High ground: a unit on a mountain sees one tile further.
+      revealAround(f, u.x, u.y, (u.typeId === "scout" ? 3 : (UNIT_TYPES[u.typeId].range > 1 ? 2 : 1)) + (terrainAt(u.x, u.y) === "mountain" ? 1 : 0));
     });
     f.bases.forEach(function (b) {
       if (b.alive) revealAround(f, b.x, b.y, 2);
@@ -2052,6 +2165,10 @@
     var out = [];
     frontier.forEach(function (t) {
       var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      // Ranged units can also hit tiles 2 away from where they stand.
+      if (type.range > 1 && t[0] === unit.x && t[1] === unit.y) {
+        dirs = dirs.concat([[2,0],[-2,0],[0,2],[0,-2],[1,1],[1,-1],[-1,1],[-1,-1]]);
+      }
       dirs.forEach(function (d) {
         var nx = t[0] + d[0], ny = t[1] + d[1];
         if (!inBounds(nx, ny)) return;
@@ -2064,12 +2181,14 @@
           if (type.attackOnly && UNIT_TYPES[eu.typeId].category !== type.attackOnly) return;
           // A camp either side has made peace (or a war pact) with, and its
           // garrison, are off-limits to that side specifically.
-          if (unit.owner === "player" && eu.owner === "natives" && isAtPeaceWithPlayer(eu.campId)) return;
+          // (The player may still pick a fight with a camp it merely has
+          // peace with — the UI asks "Break treaty?" first. War allies stay off-limits.)
+          if (unit.owner === "player" && eu.owner === "natives" && campById(eu.campId) && campById(eu.campId).pact === "war") return;
           if (unit.owner === "ai" && eu.owner === "natives" && isAtPeaceWithAi(eu.campId)) return;
           found[k] = true; out.push([nx, ny]);
         } else if (eb && eb.id !== unit.owner) {
           if (type.attackOnly) return; // e.g. the Harvester can't run over a base
-          if (unit.owner === "player" && eb.id === "natives" && isAtPeaceWithPlayer(eb.base.id)) return;
+          if (unit.owner === "player" && eb.id === "natives" && eb.base.pact === "war") return;
           if (unit.owner === "ai" && eb.id === "natives" && isAtPeaceWithAi(eb.base.id)) return;
           found[k] = true; out.push([nx, ny]);
         }
@@ -2167,10 +2286,8 @@
     var targetBase = baseAt(targetX, targetY);
     // A player city's in-built coastal artillery only ever cares about
     // naval attackers: against one, the city fights back with a regular
-    // artillery's attack (instead of its normal 0) and takes zero damage in
-    // return — "infinite defence" for as long as the city stands. Against a
-    // land attacker none of this applies; the city behaves exactly as it
-    // always has.
+    // artillery's attack (instead of its normal 0), but still takes normal
+    // damage. Against a land attacker none of this applies.
     var innerArtilleryActive = !!(targetBase && targetBase.base.hasInnerArtillery && targetBase.base.alive
       && attType.category === "naval");
     var baseEffectiveAttack = targetBase ? (innerArtilleryActive ? UNIT_TYPES.artillery.attack : targetBase.base.attack) : 0;
@@ -2178,29 +2295,28 @@
       : (targetBase ? { name: targetBase.base.isCamp ? NATIVE_CAMP_STATS.name : BASE_STATS.name, attack: baseEffectiveAttack, defense: targetBase.base.defense, hp: targetBase.base.maxHp, category: "base" } : BASE_STATS);
     var defenderTerrain = terrainAt(targetX, targetY);
     var attackerTerrain = terrainAt(attackerUnit.x, attackerUnit.y);
-    var dealt = innerArtilleryActive ? 0 : computeDamage(attType, defenderType, defenseBonus(defenderTerrain), defenderTerrain);
-    var taken = defenderType.attack > 0 ? computeDamage(defenderType, attType, defenseBonus(attackerTerrain), attackerTerrain) : 0;
+    var defBonus = defenseBonus(defenderTerrain) + (targetUnit ? dugInBonus(targetUnit) : 0);
+    var attBonus = defenseBonus(attackerTerrain) + dugInBonus(attackerUnit);
+    var dealt = computeDamage(attType, defenderType, defBonus, defenderTerrain);
+    var outranged = attType.range > 1 && !(defenderType.range > 1) && Math.abs(attackerUnit.x - targetX) + Math.abs(attackerUnit.y - targetY) > 1;
+    var taken = (defenderType.attack > 0 && !outranged) ? computeDamage(defenderType, attType, attBonus, attackerTerrain) : 0;
     return {
       attType: attType, defenderType: defenderType, targetUnit: targetUnit, targetBase: targetBase,
-      defenderTerrain: defenderTerrain, attackerTerrain: attackerTerrain, dealt: dealt, taken: taken,
+      defenderTerrain: defenderTerrain, attackerTerrain: attackerTerrain, defBonus: defBonus, attBonus: attBonus, dealt: dealt, taken: taken,
       innerArtilleryActive: innerArtilleryActive
     };
   }
 
-  function resolveUnitAttack(attackerUnit, targetX, targetY) {
+  function resolveUnitAttackCore(attackerUnit, targetX, targetY) {
     var p = previewCombat(attackerUnit, targetX, targetY);
     var attType = p.attType, defenderType = p.defenderType, dmg = p.dealt;
 
-    // One hit from the AI against any native unit or base is enough to
-    // startle that camp into ongoing hostility against the AI — checked
-    // before any hp is actually changed below, so it fires even on a
-    // killing blow.
-    if (attackerUnit.owner === "ai") {
-      if (p.targetUnit && p.targetUnit.owner === "natives" && p.targetUnit.campId) {
-        startleCampAgainstAi(campById(p.targetUnit.campId));
-      } else if (p.targetBase && p.targetBase.id === "natives") {
-        startleCampAgainstAi(p.targetBase.base);
-      }
+    // One hit against any native unit or base provokes that camp against
+    // the attacker (checked before hp changes, so it fires on a killing blow).
+    if (p.targetUnit && p.targetUnit.owner === "natives" && p.targetUnit.campId) {
+      provokeCamp(campById(p.targetUnit.campId), attackerUnit.owner);
+    } else if (p.targetBase && p.targetBase.id === "natives") {
+      provokeCamp(p.targetBase.base, attackerUnit.owner);
     }
 
     if (p.targetUnit) {
@@ -2231,12 +2347,8 @@
     } else if (p.targetBase) {
       var targetBase = p.targetBase;
       var label = cityLabel(targetBase.faction, targetBase.base);
-      if (p.innerArtilleryActive) {
-        addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + ", but its coastal artillery shrugs off naval fire entirely.");
-      } else {
-        targetBase.base.hp = Math.max(0, targetBase.base.hp - dmg);
-        addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + " for " + dmg + " (" + targetBase.base.hp + "/" + targetBase.base.maxHp + ").");
-      }
+      targetBase.base.hp = Math.max(0, targetBase.base.hp - dmg);
+      addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + " for " + dmg + " (" + targetBase.base.hp + "/" + targetBase.base.maxHp + ").");
       if (targetBase.base.hp === 0) {
         targetBase.base.alive = false;
         addLog(possessiveLabel(targetBase.id) + " " + label + " destroyed.", false);
@@ -2264,7 +2376,7 @@
           // barbarian is hostile to both sides equally, so whichever side
           // didn't just lose its last city is credited with the win.
           var raidWinner;
-          if (attackerUnit.owner === "natives") raidWinner = attackerUnit.atWarVsPlayer ? "ai" : "player";
+          if (attackerUnit.owner === "natives") raidWinner = targetBase.id === "player" ? "ai" : "player";
           else if (attackerUnit.owner === "barbarians") raidWinner = targetBase.id === "player" ? "ai" : "player";
           else raidWinner = attackerUnit.owner;
           endGame(raidWinner);
@@ -2328,6 +2440,7 @@
     if (camp.aiPact === "peace") bits.push("peace w/ AI");
     if (camp.aiPact === "war") bits.push("war ally of the AI");
     if (camp.startledByAi) bits.push("hostile to AI");
+    if (camp.startledByPlayer) bits.push("hostile to you");
     return bits.length ? " (" + bits.join(", ") + ")" : "";
   }
 
@@ -2347,7 +2460,10 @@
     // to a real human, which in local hotseat is also whoever is currently
     // sitting in the "ai" slot.
     var mult = (f.id === "ai" && state.difficulty && !state.hotseat) ? (DIFFICULTY_AI_MULT[state.difficulty] || 1) : 1;
-    f.production += Math.round(pb.total * mult);
+    var gained = Math.round(pb.total * mult);
+    f.production += gained;
+    statsOf(f).production += gained;
+    statsOf(f).turns++;
     f.research += Math.round(1 * mult);
 
     if (f.techIndex < TECHS.length) {
@@ -2408,9 +2524,23 @@
       }
     });
 
+    // Medics patch up every friendly unit standing next to them.
+    f.units.forEach(function (m) {
+      if (m.typeId !== "medic") return;
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(function (d) {
+        var pal = unitAt(m.x + d[0], m.y + d[1]);
+        if (!pal || pal.owner !== f.id || pal.hp >= UNIT_TYPES[pal.typeId].hp) return;
+        pal.hp = Math.min(UNIT_TYPES[pal.typeId].hp, pal.hp + MEDIC_HEAL_HP);
+        addLog((f.id === "player" ? "Your" : "The AI's") + " Medic heals " + UNIT_TYPES[pal.typeId].name + " (" + pal.hp + "/" + UNIT_TYPES[pal.typeId].hp + ").");
+      });
+    });
+
     runAntiAirBattery(f);
 
-    f.units.forEach(function (u) { u.acted = false; });
+    f.units.forEach(function (u) {
+      u.dugAt = u.acted ? null : [u.x, u.y];
+      u.acted = false;
+    });
     return pb.total;
   }
 
@@ -2430,11 +2560,16 @@
         if (!u || u.owner === f.id || u.hp <= 0) return;
         var ut = UNIT_TYPES[u.typeId];
         if (ut.category !== "air" || ut.oneTimeUse) return;
+        var hpBefore = u.hp;
         u.hp = Math.max(0, u.hp - ANTI_AIR_DAMAGE);
+        statsOf(f).damageDealt += hpBefore - u.hp;
+        if (isScored(u.owner)) statsOf(factionOf(u.owner)).damageTaken += hpBefore - u.hp;
         addLog((f.id === "player" ? "Your" : "The AI's") + " Anti-Air Battery at " + cityLabel(f, b) +
           " hits " + ut.name + " (" + u.owner + ") for " + ANTI_AIR_DAMAGE + " (" + u.hp + "/" + ut.hp + ").");
         if (u.hp === 0) {
           addLog(ut.name + " (" + u.owner + ") shot down.", false);
+          statsOf(f).unitsKilled++;
+          if (isScored(u.owner)) statsOf(factionOf(u.owner)).unitsLost++;
           removeUnit(u);
         }
       });
@@ -3037,6 +3172,16 @@
     cityGarrisonList: document.getElementById("cityGarrisonList"),
     cityCloseBtn: document.getElementById("cityCloseBtn"),
     gameScreen: document.getElementById("gameScreen"),
+    hintBtn: document.getElementById("hintBtn"),
+    hintBox: document.getElementById("hintBox"),
+    hintText: document.getElementById("hintText"),
+    hintCloseBtn: document.getElementById("hintCloseBtn"),
+    scoreDetail: document.getElementById("scoreDetail"),
+    scoreTitle: document.getElementById("scoreTitle"),
+    scoreRows: document.getElementById("scoreRows"),
+    scoreWhyBtn: document.getElementById("scoreWhyBtn"),
+    scorePct: document.getElementById("scorePct"),
+    scoreBarFill: document.getElementById("scoreBarFill"),
     saveIconBtn: document.getElementById("saveIconBtn"),
     menuIconBtn: document.getElementById("menuIconBtn"),
     resultMenuBtn: document.getElementById("resultMenuBtn"),
@@ -3096,6 +3241,7 @@
     el.multiplayerOverlay.hidden = true;
   }
   function showHome() {
+    clearHint();
     el.gameScreen.hidden = true;
     document.body.classList.remove("playing");
     hideAllMenus();
@@ -3289,13 +3435,13 @@
     el.combatAttackerBadge.innerHTML = '<svg><use href="#icon-' + iconIdFor(p.attType) + '"></use></svg>';
     el.combatAttackerName.textContent = p.attType.name;
     el.combatAttackerStats.textContent = "ATK " + p.attType.attack + " / DEF " + p.attType.defense;
-    el.combatAttackerTerrain.textContent = defenseBonus(p.attackerTerrain) ? terrainLabel(p.attackerTerrain) + " +" + defenseBonus(p.attackerTerrain) + " def" : "";
+    el.combatAttackerTerrain.textContent = p.attBonus ? terrainLabel(p.attackerTerrain) + " +" + p.attBonus + " def" + (dugInBonus(attackerUnit) ? " (dug in)" : "") : "";
 
     var defenderIconId = p.targetBase ? (p.targetBase.id === "natives" ? "camp" : "base") : iconIdFor(p.defenderType);
     el.combatDefenderBadge.innerHTML = '<svg><use href="#icon-' + defenderIconId + '"></use></svg>';
     el.combatDefenderName.textContent = p.targetBase ? (p.targetBase.id === "natives" ? "Native Camp" : "Enemy Base") : p.defenderType.name;
     el.combatDefenderStats.textContent = "ATK " + p.defenderType.attack + " / DEF " + p.defenderType.defense;
-    el.combatDefenderTerrain.textContent = defenseBonus(p.defenderTerrain) ? terrainLabel(p.defenderTerrain) + " +" + defenseBonus(p.defenderTerrain) + " def" : "";
+    el.combatDefenderTerrain.textContent = p.defBonus ? terrainLabel(p.defenderTerrain) + " +" + p.defBonus + " def" + (p.targetUnit && dugInBonus(p.targetUnit) ? " (dug in)" : "") : "";
 
     el.combatDealt.textContent = p.dealt;
     el.combatTaken.textContent = p.taken;
@@ -3387,9 +3533,12 @@
     renderBuildPanel();
     renderTech();
     renderLog();
+    updateHintUi();
+    if (!state.over) el.scoreDetail.hidden = true;
     el.endTurnBtn.disabled = state.over;
     if (state.over) {
       el.resultOverlay.hidden = false;
+      renderScore();
       if (state.hotseat) {
         el.resultTitle.textContent = sideName(state.winner) + " Wins";
         el.resultBody.textContent = "Every other city on the island has fallen.";
@@ -3441,6 +3590,8 @@
         if (atkSet[k]) tile.classList.add("attackable");
         if (boardSet[k]) tile.classList.add("boardable");
         if (disembarkSet[k]) tile.classList.add("disembarkable");
+        if (hintTiles && hintTiles.from && hintTiles.from[0] === x && hintTiles.from[1] === y) tile.classList.add("hint-from");
+        if (hintTiles && hintTiles.to && hintTiles.to[0] === x && hintTiles.to[1] === y) tile.classList.add("hint-to");
 
         if (isExplored) {
           var b = baseAt(x, y);
@@ -3455,7 +3606,7 @@
             var bt = document.createElement("div");
             bt.className = "base-token " + b.id;
             var antiAirNote = (b.id !== "natives" && factionOf(b.id).buildings.indexOf("antiAir") !== -1) ? " (anti-air)" : "";
-            bt.title = ownerLabel(b.id) + (b.id === "natives" ? " Camp" + campStatusSuffix(b.base) : (b.id === "barbarians" ? " City" : " Base" + (b.base.hasInnerArtillery ? " (coastal artillery — immune to naval attack)" : "") + antiAirNote));
+            bt.title = ownerLabel(b.id) + (b.id === "natives" ? " Camp" + campStatusSuffix(b.base) : (b.id === "barbarians" ? " City" : " Base" + (b.base.hasInnerArtillery ? " (coastal artillery — fires back at ships)" : "") + antiAirNote));
             bt.innerHTML = '<svg><use href="#icon-' + (b.id === "natives" ? "camp" : "base") + '"></use></svg>';
             tile.appendChild(bt);
             var pip = document.createElement("div");
@@ -3529,7 +3680,18 @@
       var isReach = reachable.some(function (t) { return t[0] === x && t[1] === y; });
       var isAtk = attackable.some(function (t) { return t[0] === x && t[1] === y; });
       var isBoard = boardable.some(function (t) { return t[0] === x && t[1] === y; });
-      if (isAtk) { openCombatAnalysis(su, x, y); return; }
+      if (isAtk) {
+        var tu = unitAt(x, y), tb = baseAt(x, y);
+        var tCamp = tu && tu.owner === "natives" ? campById(tu.campId) : (tb && tb.id === "natives" ? tb.base : null);
+        if (tCamp && tCamp.pact === "peace") {
+          askConfirm("Break treaty?", "natives can attack you if you press that.", "Break treaty", function () {
+            openCombatAnalysis(su, x, y);
+          });
+          return;
+        }
+        openCombatAnalysis(su, x, y);
+        return;
+      }
       if (isBoard) { boardFrigate(su, unitAt(x, y)); render(); return; }
       if (isReach) { su.x = x; su.y = y; su.acted = true; state.selectedUnitId = null; render(); return; }
     }
@@ -3797,6 +3959,7 @@
 
   el.endTurnBtn.addEventListener("click", function () {
     if (state.over) return;
+    clearHint();
     state.selectedUnitId = null;
     state.selectedBaseId = null;
     state.pendingDisembark = null;
@@ -3969,11 +4132,310 @@
       exportSlotText: exportSlotText, importSaveText: importSaveText, migrateSave: migrateSave,
       runAiTurn: runAiTurn, tickFaction: tickFaction, newUnit: newUnit, unitAt: unitAt, baseAt: baseAt,
       terrainAt: terrainAt, previewCombat: previewCombat, UNIT_TYPES: UNIT_TYPES, LS_SAVES_KEY: LS_SAVES_KEY, SAVE_VERSION: SAVE_VERSION,
-      aiBestAttack: aiBestAttack, attackableTiles: attackableTiles, reachableTiles: reachableTiles, islandIdAt: islandIdAt,
+      aiBestAttack: aiBestAttack, resolveUnitAttack: resolveUnitAttack, attackableTiles: attackableTiles, reachableTiles: reachableTiles, islandIdAt: islandIdAt,
       updateFogOfWar: updateFogOfWar, COLS: COLS, ROWS: ROWS
     };
   }
 
   showHome();
+  // ---------- BABY MODE HINTS ----------
+  // The Hint button (baby difficulty only) looks at the board and tells the
+  // player one concrete next step — move this unit there, hit that enemy,
+  // queue this — and highlights the tiles involved until dismissed.
+  var hintTiles = null; // { from: [x, y] | null, to: [x, y] | null }
+
+  function hintsEnabled() { return !!state && state.difficulty === "baby" && !state.over; }
+
+  function hintWhere(x1, y1, x2, y2) {
+    var dx = x2 - x1, dy = y2 - y1;
+    var parts = [];
+    if (dx) parts.push(Math.abs(dx) + " tile" + (Math.abs(dx) > 1 ? "s" : "") + (dx > 0 ? " right" : " left"));
+    if (dy) parts.push(Math.abs(dy) + " tile" + (Math.abs(dy) > 1 ? "s" : "") + (dy > 0 ? " down" : " up"));
+    return parts.length ? parts.join(" and ") : "right here";
+  }
+  function hintDist(x1, y1, x2, y2) { return Math.abs(x1 - x2) + Math.abs(y1 - y2); }
+
+  // The reachable tile that gets closest to (tx, ty) — null if none beats staying put.
+  function hintStepToward(u, tx, ty) {
+    var best = null, bestD = hintDist(u.x, u.y, tx, ty);
+    reachableTiles(u).forEach(function (t) {
+      var d = hintDist(t[0], t[1], tx, ty);
+      if (d < bestD) { bestD = d; best = t; }
+    });
+    return best;
+  }
+  function hintNearest(list, u) {
+    var best = null, bestD = Infinity;
+    list.forEach(function (t) {
+      var d = hintDist(u.x, u.y, t[0], t[1]);
+      if (d < bestD) { bestD = d; best = t; }
+    });
+    return best;
+  }
+  function hintReady(u) { return !u.acted && u.hp > 0; }
+
+  function computeHint() {
+    var f = state.player;
+    var units = f.units.filter(hintReady);
+    var fighters = units.filter(function (u) {
+      var t = UNIT_TYPES[u.typeId];
+      return t.attack > 0 && !t.canFoundCity && t.id !== "harvester" && (t.domain || "land") === "land";
+    });
+
+    // 1. A good attack is available right now.
+    var bestAtk = null;
+    units.forEach(function (u) {
+      if (!UNIT_TYPES[u.typeId].attack) return;
+      attackableTiles(u, reachableTiles(u)).forEach(function (t) {
+        var eu = unitAt(t[0], t[1]), eb = baseAt(t[0], t[1]);
+        var owner = eu ? eu.owner : (eb ? eb.id : null);
+        if (owner !== "ai" && owner !== "barbarians") return; // never nudge into natives
+        var p = previewCombat(u, t[0], t[1]);
+        if (p.dealt <= 0 || p.taken >= u.hp) return;
+        var score = (eb ? 1000 : 0) + p.dealt * 10 - p.taken;
+        if (!bestAtk || score > bestAtk.score) bestAtk = { score: score, u: u, t: t, p: p, base: !!eb };
+      });
+    });
+    if (bestAtk) {
+      var tgt = bestAtk.base ? "enemy base" : bestAtk.p.defenderType.name;
+      return {
+        text: "Attack! Click your " + UNIT_TYPES[bestAtk.u.typeId].name + " (gold tile), then click the " + tgt + " (red tile), " +
+          hintWhere(bestAtk.u.x, bestAtk.u.y, bestAtk.t[0], bestAtk.t[1]) + " from it. You deal " + bestAtk.p.dealt + ", you take " + bestAtk.p.taken + ".",
+        from: [bestAtk.u.x, bestAtk.u.y], to: bestAtk.t
+      };
+    }
+
+    // 2. Idle build queue.
+    if (!f.buildQueue.length) {
+      var pick = null;
+      f.unlocked.forEach(function (id) {
+        var t = UNIT_TYPES[id];
+        if (!t.attack || t.canFoundCity || id === "harvester" || t.oneTimeUse || (t.domain || "land") !== "land") return;
+        if (t.cost <= f.production && (!pick || t.attack * t.hp > UNIT_TYPES[pick].attack * UNIT_TYPES[pick].hp)) pick = id;
+      });
+      if (!pick) pick = "lightInfantry";
+      return { text: "Your base is idle. In the Build Queue box, choose " + UNIT_TYPES[pick].name + " (" + UNIT_TYPES[pick].cost + " pts) so it starts building.", from: null, to: null };
+    }
+
+    // 3. Harvesters earn production only on goods tiles.
+    var harvesters = units.filter(function (u) { return u.typeId === "harvester" && !isResourceTile(u.x, u.y); });
+    for (var i = 0; i < harvesters.length; i++) {
+      var h = harvesters[i];
+      var goods = [];
+      for (var y = 0; y < ROWS; y++) for (var x = 0; x < COLS; x++) {
+        if (f.explored[y][x] && isResourceTile(x, y) && !unitAt(x, y) && !baseAt(x, y) && islandIdAt(x, y) === islandIdAt(h.x, h.y)) goods.push([x, y]);
+      }
+      var g = hintNearest(goods, h);
+      if (!g) continue;
+      var step = hintStepToward(h, g[0], g[1]);
+      if (step) {
+        var arrives = step[0] === g[0] && step[1] === g[1];
+        return {
+          text: "Move your Harvester to the highlighted tile. " + (arrives ? "It's a goods tile — parked there, it adds production every turn." : "It heads for the goods tile " + hintWhere(h.x, h.y, g[0], g[1]) + " away; parked on goods it adds production."),
+          from: [h.x, h.y], to: step
+        };
+      }
+    }
+
+    // 4. Settlers found new cities (more cities = more production).
+    var settlers = units.filter(function (u) { return UNIT_TYPES[u.typeId].canFoundCity; });
+    for (var j = 0; j < settlers.length; j++) {
+      var s = settlers[j];
+      if (isValidCitySite(s.x, s.y)) {
+        return { text: "Click your Settler (gold tile) and press Found City — this spot works, and a second city boosts production.", from: [s.x, s.y], to: null };
+      }
+      var site = null, siteD = Infinity;
+      reachableTiles(s).forEach(function (t) {
+        var d = hintDist(s.x, s.y, t[0], t[1]);
+        if (isValidCitySite(t[0], t[1]) && d < siteD) { siteD = d; site = t; }
+      });
+      if (site) return { text: "Move your Settler to the highlighted tile, then Found City there next turn.", from: [s.x, s.y], to: site };
+    }
+
+    // 5. Find the enemy.
+    var enemyBases = state.ai.bases.filter(function (b) { return b.alive && f.explored[b.y][b.x]; });
+    if (!enemyBases.length) {
+      var scouts = units.filter(function (u) { return u.typeId === "scout"; });
+      for (var k = 0; k < scouts.length; k++) {
+        var sc = scouts[k];
+        var dark = [];
+        for (var yy = 0; yy < ROWS; yy++) for (var xx = 0; xx < COLS; xx++) if (!f.explored[yy][xx] && terrainAt(xx, yy) !== "water") dark.push([xx, yy]);
+        var d0 = hintNearest(dark, sc);
+        var st = d0 ? hintStepToward(sc, d0[0], d0[1]) : null;
+        if (st) return { text: "You haven't found the enemy yet. Move your Scout to the highlighted tile to explore.", from: [sc.x, sc.y], to: st };
+      }
+      return { text: "You haven't found the enemy base yet. Move units into the dark, unexplored areas — a Scout moves furthest.", from: null, to: null };
+    }
+
+    // 6. March on the enemy base.
+    var enemyTiles = enemyBases.map(function (b) { return [b.x, b.y]; });
+    for (var m = 0; m < fighters.length; m++) {
+      var a = fighters[m];
+      var eb2 = hintNearest(enemyTiles, a);
+      if (islandIdAt(eb2[0], eb2[1]) !== islandIdAt(a.x, a.y)) continue;
+      var stp = hintStepToward(a, eb2[0], eb2[1]);
+      if (stp) return { text: "Advance! Move your " + UNIT_TYPES[a.typeId].name + " to the highlighted tile — the enemy base is " + hintWhere(a.x, a.y, eb2[0], eb2[1]) + " away.", from: [a.x, a.y], to: stp };
+    }
+
+    // 7. The enemy is overseas.
+    var anyFighter = f.units.some(function (u) { return UNIT_TYPES[u.typeId].attack > 0 && (UNIT_TYPES[u.typeId].domain || "land") === "land"; });
+    var sameIsland = f.units.some(function (u) { return islandIdAt(enemyTiles[0][0], enemyTiles[0][1]) === islandIdAt(u.x, u.y); });
+    if (anyFighter && !sameIsland) {
+      if (f.buildings.indexOf("shipyard") === -1) {
+        return { text: "The enemy is on another island. Build a Shipyard (under Buildings in the Build Queue box — needs a city on the coast), then build a Frigate to carry troops.", from: null, to: null };
+      }
+      var frig = f.units.filter(function (u) { return UNIT_TYPES[u.typeId].capacity; })[0];
+      return {
+        text: frig
+          ? "Move land units next to your " + UNIT_TYPES[frig.typeId].name + " to load them, then sail it to the enemy island and disembark."
+          : "You have a Shipyard — queue a Frigate in the Build Queue box to carry troops to the enemy island.",
+        from: frig ? [frig.x, frig.y] : null, to: null
+      };
+    }
+
+    return { text: "Nothing urgent. Press End Turn — your production and research keep building.", from: null, to: null };
+  }
+
+  function showHint() {
+    if (!hintsEnabled()) return;
+    var h = computeHint();
+    hintTiles = (h.from || h.to) ? { from: h.from, to: h.to } : null;
+    el.hintText.textContent = h.text;
+    el.hintBox.hidden = false;
+    render();
+  }
+  function clearHint() {
+    hintTiles = null;
+    if (el.hintBox) el.hintBox.hidden = true;
+  }
+  // Called from render(): the button only exists in Baby Mode.
+  function updateHintUi() {
+    el.hintBtn.hidden = !hintsEnabled();
+    if (!hintsEnabled() && !el.hintBox.hidden) clearHint();
+  }
+
+  el.hintBtn.addEventListener("click", showHint);
+  el.hintCloseBtn.addEventListener("click", function () { clearHint(); render(); });
+  // ---------- END-OF-GAME SCORE ----------
+  // Every player/AI faction carries a `stats` tally that the engine updates as
+  // things actually happen (attacks, kills, cities, production). When the game
+  // ends, scoreFor() turns that tally into a 0-100 score with a line-by-line
+  // breakdown, so the percentage can always be explained from real numbers.
+  var SCORE_BENCH_PRODUCTION = 12;   // production/turn that earns full economy points
+  var SCORE_FAST_WIN_TURN = 40;      // winning by this turn earns full speed points
+  var SCORE_SLOW_WIN_TURN = 150;     // winning at or after this turn earns none
+  var SCORE_FULL_EXPANSION = 3;      // extra cities for full expansion points
+
+  function newStats() {
+    return {
+      attacks: 0, damageDealt: 0, damageTaken: 0, unitsKilled: 0, unitsLost: 0,
+      citiesOwned: 0, citiesLost: 0, citiesDestroyed: 0, campsDestroyed: 0,
+      production: 0, turns: 0, partial: false
+    };
+  }
+  // Saves from before scoring existed have no tally; start one and flag it so
+  // the breakdown can say the early game wasn't recorded.
+  function statsOf(f) {
+    if (!f.stats) {
+      f.stats = newStats();
+      f.stats.partial = true;
+      f.stats.citiesOwned = f.bases.length;
+      f.stats.turns = state ? Math.max(0, state.turn - 1) : 0;
+    }
+    return f.stats;
+  }
+  function isScored(ownerId) { return ownerId === "player" || ownerId === "ai"; }
+
+  // Wraps the combat engine: snapshots hp before, diffs after, and credits
+  // both sides (a native or barbarian on either end simply isn't scored).
+  function resolveUnitAttack(attacker, x, y) {
+    var tu = unitAt(x, y), tb = baseAt(x, y);
+    var defOwner = tu ? tu.owner : (tb ? tb.id : null);
+    var aHp0 = attacker.hp, aCargo = attacker.cargo ? attacker.cargo.length : 0;
+    var tHp0 = tu ? tu.hp : (tb ? tb.base.hp : 0), tCargo = tu && tu.cargo ? tu.cargo.length : 0;
+    resolveUnitAttackCore(attacker, x, y);
+    var dealt = tHp0 - (tu ? tu.hp : (tb ? tb.base.hp : 0));
+    var taken = aHp0 - attacker.hp;
+    var attackerDied = attacker.hp <= 0;
+    var targetDied = tu ? tu.hp <= 0 : false;
+    var baseDied = tb ? !tb.base.alive : false;
+
+    if (isScored(attacker.owner)) {
+      var sa = statsOf(factionOf(attacker.owner));
+      sa.attacks++;
+      sa.damageDealt += dealt; sa.damageTaken += taken;
+      if (targetDied) sa.unitsKilled += 1 + tCargo;
+      if (baseDied) {
+        if (defOwner === "natives") sa.campsDestroyed++;
+        else if (defOwner !== "barbarians") sa.citiesDestroyed++;
+      }
+      if (attackerDied) sa.unitsLost += 1 + aCargo;
+    }
+    if (isScored(defOwner) && defOwner !== attacker.owner) {
+      var sd = statsOf(factionOf(defOwner));
+      sd.damageTaken += dealt; sd.damageDealt += taken;
+      if (targetDied) sd.unitsLost += 1 + tCargo;
+      if (baseDied) sd.citiesLost++;
+      if (attackerDied) sd.unitsKilled += 1 + aCargo;
+    }
+  }
+
+  function scoreFor(sideId) {
+    var f = factionOf(sideId);
+    var foeId = sideId === "player" ? "ai" : "player";
+    var s = statsOf(f), foe = statsOf(factionOf(foeId));
+    var won = state.winner === sideId;
+    var turns = Math.max(1, state.turn);
+    var rows = [];
+    function add(label, got, max, detail) { rows.push({ label: label, got: got, max: max, detail: detail }); }
+
+    add("Outcome", won ? 30 : 0, 30, won ? "Won the war on turn " + turns + "." : "Lost the war on turn " + turns + ".");
+
+    var traded = s.damageDealt + s.damageTaken;
+    add("Combat", traded ? 20 * s.damageDealt / traded : 0, 20,
+      s.attacks || s.damageTaken
+        ? "Dealt " + s.damageDealt + " damage and took " + s.damageTaken + " (" + s.attacks + " attacks by you). Destroyed " + s.unitsKilled + " enemy units, lost " + s.unitsLost + " of yours."
+        : "No fighting took place.");
+
+    var foeCities = Math.max(1, foe.citiesOwned);
+    add("Conquest", 15 * Math.min(1, s.citiesDestroyed / foeCities), 15,
+      "Destroyed " + s.citiesDestroyed + " of the enemy's " + foe.citiesOwned + " cit" + (foe.citiesOwned === 1 ? "y" : "ies") + (s.campsDestroyed ? " (plus " + s.campsDestroyed + " native camp" + (s.campsDestroyed > 1 ? "s" : "") + ", which don't count)" : "") + ".");
+
+    var owned = Math.max(1, s.citiesOwned);
+    add("Defense", 10 * Math.max(0, owned - s.citiesLost) / owned, 10,
+      "Kept " + Math.max(0, owned - s.citiesLost) + " of the " + owned + " cit" + (owned === 1 ? "y" : "ies") + " you owned (" + s.citiesLost + " lost).");
+
+    var avgProd = s.production / Math.max(1, s.turns);
+    var founded = Math.max(0, s.citiesOwned - 1);
+    add("Economy", 10 * Math.min(1, avgProd / SCORE_BENCH_PRODUCTION) + 5 * Math.min(SCORE_FULL_EXPANSION, founded) / SCORE_FULL_EXPANSION, 15,
+      "Averaged " + avgProd.toFixed(1) + " production per turn over " + s.turns + " turns (" + SCORE_BENCH_PRODUCTION + " earns full marks) and founded " + founded + " extra cit" + (founded === 1 ? "y" : "ies") + " (" + SCORE_FULL_EXPANSION + " earns full marks).");
+
+    add("Research", 5 * f.techIndex / TECHS.length, 5, "Completed " + f.techIndex + " of " + TECHS.length + " research tiers.");
+
+    var speed = won ? Math.max(0, Math.min(1, (SCORE_SLOW_WIN_TURN - turns) / (SCORE_SLOW_WIN_TURN - SCORE_FAST_WIN_TURN))) : 0;
+    add("Speed", 5 * speed, 5, won
+      ? "Won on turn " + turns + " (full marks by turn " + SCORE_FAST_WIN_TURN + ", none from turn " + SCORE_SLOW_WIN_TURN + ")."
+      : "Only awarded for a win.");
+
+    var total = rows.reduce(function (n, r) { return n + r.got; }, 0);
+    return { total: Math.round(total), rows: rows, partial: !!s.partial };
+  }
+
+  function renderScore() {
+    var sideId = state.hotseat ? state.winner : "player";
+    var sc = scoreFor(sideId);
+    el.scorePct.textContent = sc.total + "%";
+    el.scoreBarFill.style.width = sc.total + "%";
+    var who = state.hotseat ? sideName(sideId) + "'s score" : "Your score";
+    el.scoreTitle.textContent = who + ": " + sc.total + " / 100";
+    el.scoreRows.innerHTML = sc.rows.map(function (r) {
+      return '<div class="score-row"><div class="score-row-head"><span>' + r.label + '</span><span>' +
+        (Math.round(r.got * 10) / 10) + ' / ' + r.max + '</span></div><div class="score-row-detail">' + r.detail + '</div></div>';
+    }).join("") + (sc.partial ? '<div class="score-row-detail">Note: this save was made before scoring existed, so earlier fighting and building were not recorded.</div>' : "");
+  }
+
+  el.scoreWhyBtn.addEventListener("click", function () {
+    el.scoreDetail.hidden = !el.scoreDetail.hidden;
+  });
 })();
 </script>

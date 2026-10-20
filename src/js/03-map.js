@@ -187,6 +187,14 @@
     if (terrain === "forest") return 2;
     return 0;
   }
+  // Dug in: a unit that sat still through a whole turn on forest or mountain
+  // (unit.dugAt is stamped at end of turn, see tickFaction) gets +1 defense
+  // for as long as it stays on that tile. Plains offer nothing to dig into.
+  function dugInBonus(u) {
+    if (!u.dugAt || u.dugAt[0] !== u.x || u.dugAt[1] !== u.y) return 0;
+    var t = terrainAt(u.x, u.y);
+    return (t === "forest" || t === "mountain") ? 1 : 0;
+  }
   function terrainLabel(terrain) {
     return terrain === "water" ? "River" : terrain === "mountain" ? "Mountain" : terrain === "forest" ? "Forest" : "Plain";
   }

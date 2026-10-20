@@ -34,7 +34,7 @@
     return {
       id: "c" + (state.nextCityId++), x: x, y: y, hp: st.hp, maxHp: st.hp, attack: st.attack, defense: st.defense,
       alive: true, isCamp: kind === "camp", isBarbarianCity: kind === "barbarian",
-      pact: null, aiPact: null, startledByAi: false, hasInnerArtillery: !!hasInnerArtillery
+      pact: null, aiPact: null, startledByAi: false, startledByPlayer: false, startledByBarbarians: false, hasInnerArtillery: !!hasInnerArtillery
     };
   }
   function foundCity(f, x, y, kind) {
@@ -45,6 +45,7 @@
     // have a permanent, unearned defensive edge over the other.
     var c = makeCity(x, y, kind, (f.id === "player" || state.hotseat) && !kind);
     f.bases.push(c);
+    if (!kind && f.stats) f.stats.citiesOwned++;
     return c;
   }
   function isValidCitySite(x, y) {
@@ -72,7 +73,8 @@
       // lives on the faction object itself so it travels automatically with
       // whichever human owns this data when swapHotseatSeats swaps who's
       // sitting in the "player" vs "ai" slot.
-      displayName: null
+      displayName: null,
+      stats: newStats()
     };
   }
 

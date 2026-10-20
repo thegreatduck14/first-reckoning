@@ -115,3 +115,118 @@ test("hard AI takes the fight to an idle player", () => {
   }
   assert.ok(attacked >= 3, `hard AI attacked the player's cities in ${attacked}/4 games`);
 });
+
+test("hint button only shows in Baby Mode and always gives a hint", () => {
+  const { game, el } = loadGame({ seed: 5 });
+  game.newGame("medium");
+  game.render();
+  assert.equal(el.hintBtn.hidden, true);
+  game.newGame("baby");
+  game.render();
+  assert.equal(el.hintBtn.hidden, false);
+  for (let turn = 0; turn < 40; turn++) {
+    el.hintBtn.click();
+    assert.equal(el.hintBox.hidden, false);
+    assert.ok(el.hintText.textContent.length > 10);
+    el.hintCloseBtn.click();
+    assert.equal(el.hintBox.hidden, true);
+    el.endTurnBtn.click();
+    if (game.state.over) break;
+  }
+});
+
+test("end-of-game score is built from real tallies and explained", () => {
+  const g = loadGame({ seed: 9 });
+  const { game, el } = g;
+  game.newGame("baby");
+  const s = game.state;
+  // Stage a fight: player heavy vehicle next to an AI light infantry.
+  const px = s.player.bases[0].x, py = s.player.bases[0].y;
+  let spot = null;
+  for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1],[2,0],[0,2],[-2,0],[0,-2]]) {
+    if (game.terrainAt(px+dx, py+dy) !== "water" && !game.unitAt(px+dx, py+dy) && !game.baseAt(px+dx, py+dy)) { spot = [px+dx, py+dy]; break; }
+  }
+  const att = game.newUnit("heavyVehicle", "player", spot[0], spot[1]);
+  s.player.units.push(att);
+  let foe = null;
+  for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+    const x = spot[0]+dx, y = spot[1]+dy;
+    if (game.terrainAt(x, y) !== "water" && !game.unitAt(x, y) && !game.baseAt(x, y)) { foe = game.newUnit("lightInfantry", "ai", x, y); break; }
+  }
+  s.ai.units.push(foe);
+  game.updateFogOfWar();
+  const hp0 = foe.hp;
+  g.window.__FR_TEST__.game.resolveUnitAttack(att, foe.x, foe.y);
+  assert.equal(s.player.stats.attacks, 1);
+  assert.equal(s.player.stats.damageDealt, hp0 - foe.hp);
+  s.over = true; s.winner = "player"; s.turn = 30;
+  game.render();
+  assert.equal(el.resultOverlay.hidden, false);
+  assert.match(el.scorePct.textContent, /^\d+%$/);
+  assert.ok(el.scoreRows.textContent.includes("Combat"));
+  assert.equal(el.scoreDetail.hidden, true);
+  el.scoreWhyBtn.click();
+  assert.equal(el.scoreDetail.hidden, false);
+});
+
+test("terrain: forest hides units from afar, mountains extend sight, digging in adds defense", () => {
+  const { game } = loadGame({ seed: 4 });
+  game.newGame("medium");
+  const s = game.state;
+  const find = (terr, minGap) => {
+    for (let y = 2; y < game.ROWS - 2; y++) for (let x = 2; x < game.COLS - 6; x++) {
+      if (game.terrainAt(x, y) !== terr || game.unitAt(x, y) || game.baseAt(x, y)) continue;
+      let ok = true;
+      for (let d = 0; d <= minGap; d++) if (game.terrainAt(x + d, y) === "water" || game.unitAt(x + d, y) || game.baseAt(x + d, y)) ok = false;
+      if (ok) return [x, y];
+    }
+    return null;
+  };
+  // Forest: an AI unit in a forest 3 tiles from a player scout is not visible; adjacent it is.
+  const fo = find("forest", 3);
+  if (fo) {
+    const foe = game.newUnit("lightInfantry", "ai", fo[0], fo[1]); s.ai.units.push(foe);
+    const sc = game.newUnit("scout", "player", fo[0] + 3, fo[1]); s.player.units.push(sc);
+    game.updateFogOfWar();
+    assert.equal(s.player.visible[fo[1]][fo[0]], false, "hidden at range 3");
+    sc.x = fo[0] + 1; game.updateFogOfWar();
+    assert.equal(s.player.visible[fo[1]][fo[0]], true, "seen when adjacent");
+    foe.dugAt = [foe.x, foe.y];
+    const p = game.previewCombat(sc, foe.x, foe.y);
+    assert.equal(p.defBonus, 3, "forest +2 and dug in +1");
+    foe.dugAt = null;
+    assert.equal(game.previewCombat(sc, foe.x, foe.y).defBonus, 2);
+  }
+  // Mountain: a plain unit sees 1 tile; on a mountain, 2.
+  const mo = find("mountain", 3);
+  if (mo) {
+    const u = game.newUnit("lightInfantry", "player", mo[0], mo[1]); s.player.units.push(u);
+    game.updateFogOfWar();
+    assert.equal(s.player.visible[mo[1]][mo[0] + 2], true);
+  }
+});
+
+test("new units: commando range, medic heal, submarine stealth, unlocks", () => {
+  const { game } = loadGame({ seed: 6 });
+  game.newGame("medium");
+  const s = game.state, T = game.UNIT_TYPES;
+  ["jeep", "medic", "commando", "submarine"].forEach((id) => assert.ok(T[id], id));
+  // Land tiles in a row for commando test.
+  let row = null;
+  for (let y = 2; y < game.ROWS - 2 && !row; y++) for (let x = 2; x < game.COLS - 6; x++) {
+    let ok = true;
+    for (let d = 0; d < 3; d++) if (game.terrainAt(x + d, y) === "water" || game.unitAt(x + d, y) || game.baseAt(x + d, y)) ok = false;
+    if (ok) { row = [x, y]; break; }
+  }
+  const c = game.newUnit("commando", "player", row[0], row[1]); s.player.units.push(c);
+  const foe = game.newUnit("lightInfantry", "ai", row[0] + 2, row[1]); s.ai.units.push(foe);
+  game.updateFogOfWar();
+  const tiles = game.attackableTiles(c, []);
+  assert.ok(tiles.some((t) => t[0] === foe.x && t[1] === foe.y), "commando reaches 2 tiles");
+  assert.equal(game.previewCombat(c, foe.x, foe.y).taken, 0, "no retaliation at range");
+  // Medic heals a hurt neighbour at end of turn.
+  const m = game.newUnit("medic", "player", row[0] + 1, row[1]); s.player.units.push(m);
+  c.hp = 1;
+  game.tickFaction(s.player);
+  assert.equal(c.hp, 3);
+});

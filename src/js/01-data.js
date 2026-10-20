@@ -1,5 +1,6 @@
   // ---------- DATA ----------
   var BUILDER_REPAIR_HP = 3;
+  var MEDIC_HEAL_HP = 2;
   var UNIT_TYPES = {
     harvester: { id: "harvester", name: "Harvester", short: "HV", category: "economy", domain: "land", attack: 4, defense: 1, hp: 8, movement: 2, cost: 4, attackOnly: "infantry", defenseBonusVs: { infantry: 5 }, notes: "Unarmored, but its bulk can run over an adjacent enemy Infantry unit — can't target anything else. Takes very little damage back from the Infantry it tramples; still fragile against everything else." },
     builder: { id: "builder", name: "Builder", short: "BL", category: "economy", domain: "land", attack: 0, defense: 1, hp: 6, movement: 2, cost: 4, notes: "Unarmed. Sit it next to a damaged friendly city and it repairs " + BUILDER_REPAIR_HP + " HP of that city's walls every turn (never above the city's max HP)." },
@@ -10,7 +11,7 @@
     antiArmorInfantry: { id: "antiArmorInfantry", name: "Anti-Armor Infantry", short: "AA", category: "infantry", domain: "land", attack: 3, defense: 4, hp: 9, movement: 1, cost: 3, attackBonusVs: {}, armorPenetrationVs: { vehicle: 3 } },
     lightVehicle: { id: "lightVehicle", name: "Light Vehicle", short: "LV", category: "vehicle", domain: "land", attack: 5, defense: 2, hp: 8, movement: 3, cost: 4, attackBonusVs: { infantry: 1.5 } },
     heavyVehicle: { id: "heavyVehicle", name: "Heavy Vehicle", short: "HV2", category: "vehicle", domain: "land", attack: 8, defense: 3, hp: 14, movement: 1, cost: 8, attackBonusVs: { infantry: 1.25 } },
-    artillery: { id: "artillery", name: "Artillery", short: "AR", category: "siege", domain: "land", attack: 10, defense: 1, hp: 6, movement: 1, cost: 7, attackBonusVs: {} },
+    artillery: { id: "artillery", name: "Artillery", short: "AR", category: "siege", domain: "land", attack: 10, defense: 1, hp: 6, movement: 1, cost: 9, attackBonusVs: {} },
     flyer: { id: "flyer", name: "Ornithopter", short: "OR", category: "air", domain: "land", attack: 5, defense: 2, hp: 7, movement: 5, cost: 9, attackBonusVs: {}, notes: "Ignores terrain entirely, ocean included — it never needs a ship to cross water. Any enemy ship (or other unit) adjacent to it can still attack it while it's over open water, same as anywhere else." },
     // Player-exclusive — see the tech tree's playerOnly flag on the tech
     // that unlocks it (Guided Missiles) and tickFaction, which refuses to
@@ -21,6 +22,16 @@
     // at the TARGET's tile — +50% attack against a unit or city standing on
     // a mountain (see computeDamage/previewCombat).
     missile: { id: "missile", name: "Missile", short: "MS", category: "air", domain: "land", attack: 14, defense: 2, hp: 6, movement: 5, cost: 55, attackBonusVs: {}, attackTerrainBonus: { mountain: 0.5 }, oneTimeUse: true, notes: "Player-only. Flies over any terrain, ocean included, same as an Ornithopter. Deals 50% more damage when striking a unit or city that's standing on a mountain. One-time use — it's spent and disappears the instant it attacks, hit or miss, whether the target is a unit, a city, or natives. Immune to Anti-Air Batteries — no enemy city's anti-air defense can shoot it down before it hits." },
+    // Player-only, unlocked by the Ultimate Destruction tech. Absurd attack, modest defense.
+    poo: { id: "poo", name: "Poo", short: "PO", category: "vehicle", domain: "land", attack: 999999999, defense: 15, hp: 20, movement: 2, cost: 867, attackBonusVs: {}, notes: "Player-only. Unlocked by Ultimate Destruction. Hits for 999999999." },
+    // Added units. Raider Jeep: fast and flimsy, shreds Harvesters/Settlers.
+    jeep: { id: "jeep", name: "Raider Jeep", short: "RJ", category: "vehicle", domain: "land", attack: 4, defense: 1, hp: 6, movement: 5, cost: 5, attackBonusVs: { economy: 2 }, notes: "Very fast raider. Hits economy units (Harvesters, Settlers, Builders) twice as hard." },
+    // Medic: unarmed; heals friendly units standing next to it each turn.
+    medic: { id: "medic", name: "Medic", short: "MD", category: "infantry", domain: "land", attack: 0, defense: 1, hp: 6, movement: 2, cost: 5, notes: "Unarmed. Heals " + MEDIC_HEAL_HP + " HP on every friendly unit next to it at the end of each turn." },
+    // Commando: shoots from 2 tiles away, and a target that isn't also ranged can't hit back.
+    commando: { id: "commando", name: "Commando", short: "CM", category: "infantry", domain: "land", attack: 7, defense: 1, hp: 5, movement: 2, cost: 7, range: 2, attackBonusVs: {}, notes: "Attacks from up to 2 tiles away; targets that aren't ranged can't hit back at that distance. Fragile up close." },
+    // Submarine: hunts ships only, and can't be seen unless an enemy is next to it.
+    submarine: { id: "submarine", name: "Submarine", short: "SM", category: "naval", domain: "naval", attack: 8, defense: 3, hp: 12, movement: 3, cost: 45, attackOnly: "naval", attackBonusVs: {}, notes: "Attacks ships only. Hidden from enemies unless one is on an adjacent tile." },
     frigate: { id: "frigate", name: "Frigate", short: "FR", category: "naval", domain: "naval", attack: 6, defense: 4, hp: 10, movement: 4, cost: 30, capacity: 3, attackBonusVs: {}, notes: "One is pre-placed per side at the start; after that it's built at a coastal city with a Shipyard. Carries up to 3 cargo slots (a Settler takes 2); if it sinks, everything aboard sinks with it." },
     carrier: { id: "carrier", name: "Carrier", short: "CV", category: "naval", domain: "naval", attack: 2, defense: 7, hp: 16, movement: 3, cost: 40, capacity: 5, attackBonusVs: {}, notes: "Weak offense, but a tough hull built to ferry troops — 5 cargo slots (a Settler takes 2)." },
     battleship: { id: "battleship", name: "Battleship", short: "BB", category: "naval", domain: "naval", attack: 10, defense: 10, hp: 22, movement: 3, cost: 80, capacity: 1, attackBonusVs: {}, notes: "The heaviest warship afloat. Only 1 cargo slot — too tight for a Settler (needs 2)." },
@@ -46,7 +57,7 @@
   var BASE_STATS = { name: "Base", attack: 0, defense: 5, hp: 20, category: "base" };
   // A native camp fights back on its own — much tougher than an ordinary
   // city, which has no attack of its own and relies entirely on its garrison.
-  var NATIVE_CAMP_STATS = { name: "Native Camp", attack: 5, defense: 5, hp: 20, category: "base" };
+  var NATIVE_CAMP_STATS = { name: "Native Camp", attack: 5, defense: 2, hp: 20, category: "base" };
   var NATIVE_CAMP_MAX = 6; // hard cap on how many native camps ever exist on the map
   // Weighted so most camps are lightly held, with an occasional armed,
   // mounted, or tank-garrisoned camp to keep raiding them risky.
@@ -86,14 +97,15 @@
   }
 
   var TECHS = [
-    { id: "tech1", name: "Armor Piercing", cost: 6, unlocks: ["antiArmorInfantry", "lightVehicle"] },
-    { id: "tech2", name: "Heavy Fabrication", cost: 14, unlocks: ["heavyVehicle", "artillery"] },
+    { id: "tech1", name: "Armor Piercing", cost: 6, unlocks: ["antiArmorInfantry", "lightVehicle", "jeep"] },
+    { id: "tech2", name: "Heavy Fabrication", cost: 14, unlocks: ["heavyVehicle", "artillery", "medic", "commando"] },
     { id: "tech3", name: "Flight", cost: 24, unlocks: ["flyer"] },
     // playerOnly: the AI (and, in principle, any other faction that ever ran
     // through TECHS) never actually completes this tier — see tickFaction,
     // which stops advancing techIndex here for anyone but the player. Its
     // research keeps accruing past this point, it just never spends it.
-    { id: "tech4", name: "Guided Missiles", cost: 30, unlocks: ["missile"], playerOnly: true }
+    { id: "tech4", name: "Guided Missiles", cost: 30, unlocks: ["missile"], playerOnly: true },
+    { id: "tech5", name: "Ultimate Destruction", cost: 60, unlocks: ["poo"], playerOnly: true }
   ];
   var STARTING_UNLOCKS = ["harvester", "scout", "settler", "lightInfantry", "builder"];
   var MIN_CITY_DISTANCE = 4; // Chebyshev tiles a new city must keep from every existing city
@@ -102,7 +114,7 @@
   var BUILDING_TYPES = {
     barracks: { id: "barracks", name: "Barracks", cost: 10, prodBonus: 2, desc: "+2 production per turn." },
     foundry: { id: "foundry", name: "Foundry", cost: 20, prodBonus: 3, desc: "+3 production per turn." },
-    shipyard: { id: "shipyard", name: "Shipyard", cost: 60, prodBonus: 0, desc: "Unlocks Frigates, Carriers, and Battleships. Requires a coastal city.", grantsUnlocks: ["frigate", "carrier", "battleship"] },
+    shipyard: { id: "shipyard", name: "Shipyard", cost: 60, prodBonus: 0, desc: "Unlocks Frigates, Carriers, Battleships, and Submarines. Requires a coastal city.", grantsUnlocks: ["frigate", "carrier", "battleship", "submarine"] },
     antiAir: { id: "antiAir", name: "Anti-Air Battery", cost: 200, prodBonus: 0, desc: "Every one of your cities automatically fires on any enemy flying unit adjacent to it, every turn, for " + ANTI_AIR_DAMAGE + " damage." }
   };
   var BUILDING_ORDER = ["barracks", "foundry", "shipyard", "antiAir"];

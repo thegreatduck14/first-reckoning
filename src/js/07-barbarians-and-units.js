@@ -356,6 +356,7 @@
     state.ai.units.forEach(function (u) { u.owner = "ai"; });
     state.natives.bases.forEach(function (c) {
       var p = c.pact; c.pact = c.aiPact; c.aiPact = p;
+      var sp = !!c.startledByPlayer; c.startledByPlayer = !!c.startledByAi; c.startledByAi = sp;
     });
     state.natives.units.forEach(function (u) {
       var w = !!u.atWar, wv = !!u.atWarVsPlayer;
@@ -387,6 +388,13 @@
         var x = cx + dx, y = cy + dy;
         if (!inBoundsRaw(x, y)) continue;
         f.explored[y][x] = true;
+        // Forest cover: an enemy unit hiding in a forest can only be spotted
+        // from an adjacent tile, however far the viewer can otherwise see.
+        // Submarines hide the same way, in open water.
+        if (Math.max(Math.abs(dx), Math.abs(dy)) > 1 && terrainAt(x, y) !== "plain" && terrainAt(x, y) !== "mountain") {
+          var hidden = unitAt(x, y);
+          if (hidden && hidden.owner !== f.id && (terrainAt(x, y) === "forest" || hidden.typeId === "submarine")) continue;
+        }
         f.visible[y][x] = true;
       }
     }
@@ -394,7 +402,8 @@
   function updateVisionFor(f) {
     f.visible = makeVisionGrid();
     f.units.forEach(function (u) {
-      revealAround(f, u.x, u.y, u.typeId === "scout" ? 3 : 1);
+      // High ground: a unit on a mountain sees one tile further.
+      revealAround(f, u.x, u.y, (u.typeId === "scout" ? 3 : (UNIT_TYPES[u.typeId].range > 1 ? 2 : 1)) + (terrainAt(u.x, u.y) === "mountain" ? 1 : 0));
     });
     f.bases.forEach(function (b) {
       if (b.alive) revealAround(f, b.x, b.y, 2);
@@ -505,6 +514,10 @@
     var out = [];
     frontier.forEach(function (t) {
       var dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      // Ranged units can also hit tiles 2 away from where they stand.
+      if (type.range > 1 && t[0] === unit.x && t[1] === unit.y) {
+        dirs = dirs.concat([[2,0],[-2,0],[0,2],[0,-2],[1,1],[1,-1],[-1,1],[-1,-1]]);
+      }
       dirs.forEach(function (d) {
         var nx = t[0] + d[0], ny = t[1] + d[1];
         if (!inBounds(nx, ny)) return;
@@ -517,12 +530,14 @@
           if (type.attackOnly && UNIT_TYPES[eu.typeId].category !== type.attackOnly) return;
           // A camp either side has made peace (or a war pact) with, and its
           // garrison, are off-limits to that side specifically.
-          if (unit.owner === "player" && eu.owner === "natives" && isAtPeaceWithPlayer(eu.campId)) return;
+          // (The player may still pick a fight with a camp it merely has
+          // peace with — the UI asks "Break treaty?" first. War allies stay off-limits.)
+          if (unit.owner === "player" && eu.owner === "natives" && campById(eu.campId) && campById(eu.campId).pact === "war") return;
           if (unit.owner === "ai" && eu.owner === "natives" && isAtPeaceWithAi(eu.campId)) return;
           found[k] = true; out.push([nx, ny]);
         } else if (eb && eb.id !== unit.owner) {
           if (type.attackOnly) return; // e.g. the Harvester can't run over a base
-          if (unit.owner === "player" && eb.id === "natives" && isAtPeaceWithPlayer(eb.base.id)) return;
+          if (unit.owner === "player" && eb.id === "natives" && eb.base.pact === "war") return;
           if (unit.owner === "ai" && eb.id === "natives" && isAtPeaceWithAi(eb.base.id)) return;
           found[k] = true; out.push([nx, ny]);
         }
@@ -620,10 +635,8 @@
     var targetBase = baseAt(targetX, targetY);
     // A player city's in-built coastal artillery only ever cares about
     // naval attackers: against one, the city fights back with a regular
-    // artillery's attack (instead of its normal 0) and takes zero damage in
-    // return — "infinite defence" for as long as the city stands. Against a
-    // land attacker none of this applies; the city behaves exactly as it
-    // always has.
+    // artillery's attack (instead of its normal 0), but still takes normal
+    // damage. Against a land attacker none of this applies.
     var innerArtilleryActive = !!(targetBase && targetBase.base.hasInnerArtillery && targetBase.base.alive
       && attType.category === "naval");
     var baseEffectiveAttack = targetBase ? (innerArtilleryActive ? UNIT_TYPES.artillery.attack : targetBase.base.attack) : 0;
@@ -631,29 +644,28 @@
       : (targetBase ? { name: targetBase.base.isCamp ? NATIVE_CAMP_STATS.name : BASE_STATS.name, attack: baseEffectiveAttack, defense: targetBase.base.defense, hp: targetBase.base.maxHp, category: "base" } : BASE_STATS);
     var defenderTerrain = terrainAt(targetX, targetY);
     var attackerTerrain = terrainAt(attackerUnit.x, attackerUnit.y);
-    var dealt = innerArtilleryActive ? 0 : computeDamage(attType, defenderType, defenseBonus(defenderTerrain), defenderTerrain);
-    var taken = defenderType.attack > 0 ? computeDamage(defenderType, attType, defenseBonus(attackerTerrain), attackerTerrain) : 0;
+    var defBonus = defenseBonus(defenderTerrain) + (targetUnit ? dugInBonus(targetUnit) : 0);
+    var attBonus = defenseBonus(attackerTerrain) + dugInBonus(attackerUnit);
+    var dealt = computeDamage(attType, defenderType, defBonus, defenderTerrain);
+    var outranged = attType.range > 1 && !(defenderType.range > 1) && Math.abs(attackerUnit.x - targetX) + Math.abs(attackerUnit.y - targetY) > 1;
+    var taken = (defenderType.attack > 0 && !outranged) ? computeDamage(defenderType, attType, attBonus, attackerTerrain) : 0;
     return {
       attType: attType, defenderType: defenderType, targetUnit: targetUnit, targetBase: targetBase,
-      defenderTerrain: defenderTerrain, attackerTerrain: attackerTerrain, dealt: dealt, taken: taken,
+      defenderTerrain: defenderTerrain, attackerTerrain: attackerTerrain, defBonus: defBonus, attBonus: attBonus, dealt: dealt, taken: taken,
       innerArtilleryActive: innerArtilleryActive
     };
   }
 
-  function resolveUnitAttack(attackerUnit, targetX, targetY) {
+  function resolveUnitAttackCore(attackerUnit, targetX, targetY) {
     var p = previewCombat(attackerUnit, targetX, targetY);
     var attType = p.attType, defenderType = p.defenderType, dmg = p.dealt;
 
-    // One hit from the AI against any native unit or base is enough to
-    // startle that camp into ongoing hostility against the AI — checked
-    // before any hp is actually changed below, so it fires even on a
-    // killing blow.
-    if (attackerUnit.owner === "ai") {
-      if (p.targetUnit && p.targetUnit.owner === "natives" && p.targetUnit.campId) {
-        startleCampAgainstAi(campById(p.targetUnit.campId));
-      } else if (p.targetBase && p.targetBase.id === "natives") {
-        startleCampAgainstAi(p.targetBase.base);
-      }
+    // One hit against any native unit or base provokes that camp against
+    // the attacker (checked before hp changes, so it fires on a killing blow).
+    if (p.targetUnit && p.targetUnit.owner === "natives" && p.targetUnit.campId) {
+      provokeCamp(campById(p.targetUnit.campId), attackerUnit.owner);
+    } else if (p.targetBase && p.targetBase.id === "natives") {
+      provokeCamp(p.targetBase.base, attackerUnit.owner);
     }
 
     if (p.targetUnit) {
@@ -684,12 +696,8 @@
     } else if (p.targetBase) {
       var targetBase = p.targetBase;
       var label = cityLabel(targetBase.faction, targetBase.base);
-      if (p.innerArtilleryActive) {
-        addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + ", but its coastal artillery shrugs off naval fire entirely.");
-      } else {
-        targetBase.base.hp = Math.max(0, targetBase.base.hp - dmg);
-        addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + " for " + dmg + " (" + targetBase.base.hp + "/" + targetBase.base.maxHp + ").");
-      }
+      targetBase.base.hp = Math.max(0, targetBase.base.hp - dmg);
+      addLog(attType.name + " (" + attackerUnit.owner + ") hits " + possessiveLabel(targetBase.id) + " " + label + " for " + dmg + " (" + targetBase.base.hp + "/" + targetBase.base.maxHp + ").");
       if (targetBase.base.hp === 0) {
         targetBase.base.alive = false;
         addLog(possessiveLabel(targetBase.id) + " " + label + " destroyed.", false);
@@ -717,7 +725,7 @@
           // barbarian is hostile to both sides equally, so whichever side
           // didn't just lose its last city is credited with the win.
           var raidWinner;
-          if (attackerUnit.owner === "natives") raidWinner = attackerUnit.atWarVsPlayer ? "ai" : "player";
+          if (attackerUnit.owner === "natives") raidWinner = targetBase.id === "player" ? "ai" : "player";
           else if (attackerUnit.owner === "barbarians") raidWinner = targetBase.id === "player" ? "ai" : "player";
           else raidWinner = attackerUnit.owner;
           endGame(raidWinner);
@@ -781,6 +789,7 @@
     if (camp.aiPact === "peace") bits.push("peace w/ AI");
     if (camp.aiPact === "war") bits.push("war ally of the AI");
     if (camp.startledByAi) bits.push("hostile to AI");
+    if (camp.startledByPlayer) bits.push("hostile to you");
     return bits.length ? " (" + bits.join(", ") + ")" : "";
   }
 
